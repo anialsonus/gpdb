@@ -80,3 +80,15 @@ WHERE c.table_name = 't_comments_b';
 
 DROP TABLE t_comments_a;
 DROP TABLE t_comments_b;
+
+-- Check including storage for partitioned table with storage attributes
+CREATE TABLE ctlt4 (a numeric, b timestamp)
+WITH (appendoptimized=true, orientation=row, compresstype=zstd);
+
+-- Should be created without errors
+CREATE TABLE ctlt4_like (LIKE ctlt4 INCLUDING STORAGE)
+PARTITION BY RANGE(b) (
+  DEFAULT PARTITION extra
+);
+
+DROP TABLE ctlt4, ctlt4_like;
