@@ -24,7 +24,7 @@ extern Datum EnableXform(PG_FUNCTION_ARGS);
 Datum
 enable_xform(PG_FUNCTION_ARGS)
 {
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 	return EnableXform(fcinfo);
 #else
 	return CStringGetTextDatum("Server has been compiled without ORCA");
@@ -39,7 +39,7 @@ extern Datum DisableXform(PG_FUNCTION_ARGS);
 Datum
 disable_xform(PG_FUNCTION_ARGS)
 {
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 	return DisableXform(fcinfo);
 #else
 	return CStringGetTextDatum("Server has been compiled without ORCA");
@@ -54,7 +54,7 @@ extern Datum LibraryVersion();
 Datum
 gp_opt_version(PG_FUNCTION_ARGS pg_attribute_unused())
 {
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 	return LibraryVersion();
 #else
 	return CStringGetTextDatum("Server has been compiled without ORCA");

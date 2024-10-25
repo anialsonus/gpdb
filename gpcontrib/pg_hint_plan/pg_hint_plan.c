@@ -412,7 +412,7 @@ static void pg_hint_plan_ProcessUtility(PlannedStmt *pstmt,
 					ProcessUtilityContext context,
 					ParamListInfo params, QueryEnvironment *queryEnv,
 					DestReceiver *dest, char *completionTag);
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 static void *external_plan_hint_hook(Query *parse);
 #endif
 static PlannedStmt *pg_hint_plan_planner(Query *parse, int cursorOptions,
@@ -575,7 +575,7 @@ static join_search_hook_type prev_join_search = NULL;
 static set_rel_pathlist_hook_type prev_set_rel_pathlist = NULL;
 static ProcessUtility_hook_type prev_ProcessUtility_hook = NULL;
 static ExecutorEnd_hook_type prev_ExecutorEnd = NULL;
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 static plan_hint_hook_type prev_plan_hint_hook = NULL;
 #endif
 
@@ -733,7 +733,7 @@ _PG_init(void)
 	ProcessUtility_hook = pg_hint_plan_ProcessUtility;
 	prev_ExecutorEnd = ExecutorEnd_hook;
 	ExecutorEnd_hook = pg_hint_ExecutorEnd;
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 	prev_plan_hint_hook = plan_hint_hook;
 	plan_hint_hook = external_plan_hint_hook;
 #endif
@@ -761,7 +761,7 @@ _PG_fini(void)
 	set_rel_pathlist_hook = prev_set_rel_pathlist;
 	ProcessUtility_hook = prev_ProcessUtility_hook;
 	ExecutorEnd_hook = prev_ExecutorEnd;
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 	plan_hint_hook = prev_plan_hint_hook;
 #endif
 
@@ -5038,7 +5038,7 @@ void plpgsql_query_erase_callback(ResourceReleasePhase phase,
 #include "pg_stat_statements.c"
 
 
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 /*
  * This function hook allows external code (i.e. backend) to parse a query into
  * hint structures.

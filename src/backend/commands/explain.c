@@ -55,7 +55,7 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/orca.h"
 
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 extern char *SerializeDXLPlan(Query *parse);
 #endif
 
@@ -80,7 +80,7 @@ static void ExplainOneQuery(Query *query, int cursorOptions,
 static void report_triggers(ResultRelInfo *rInfo, bool show_relname,
 							ExplainState *es);
 
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 static void ExplainDXL(Query *query, ExplainState *es,
 							const char *queryString,
 							ParamListInfo params);
@@ -375,7 +375,7 @@ ExplainResultDesc(ExplainStmt *stmt)
 	return tupdesc;
 }
 
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 /*
  * ExplainDXL -
  *	  print out the execution plan for one Query in DXL format
@@ -476,7 +476,7 @@ ExplainOneQuery(Query *query, int cursorOptions,
 				const char *queryString, ParamListInfo params,
 				QueryEnvironment *queryEnv)
 {
-#ifdef USE_ORCA
+#ifdef USE_ORCA_RE
 	if (es->dxl)
 	{
 		ExplainDXL(query, es, queryString, params);
@@ -983,10 +983,8 @@ ExplainPrintPlan(ExplainState *es, QueryDesc *queryDesc)
 	 */
 	if (queryDesc->plannedstmt->planGen == PLANGEN_PLANNER)
 		ExplainPropertyStringInfo("Optimizer", es, "Postgres-based planner");
-#ifdef USE_ORCA
 	else
 		ExplainPropertyStringInfo("Optimizer", es, "GPORCA");
-#endif
 
 	ExplainPrintSettings(es);
 }

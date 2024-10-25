@@ -1869,11 +1869,7 @@ struct config_bool ConfigureNamesBool_gp[] =
 			NULL
 		},
 		&optimizer,
-#ifdef USE_ORCA
-		true,
-#else
 		false,
-#endif
 		check_optimizer, NULL, NULL
 	},
 

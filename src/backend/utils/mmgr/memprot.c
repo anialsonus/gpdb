@@ -245,7 +245,7 @@ GPMemoryProtect_TrackStartupMemory(void)
 	 */
 	bytes += 6L << BITS_IN_MB;
 
-#ifdef USE_ORCA
+//#ifdef USE_ORCA_RE
 	/* When compile with ORCA it will commit 6MB more */
 	bytes += 6L << BITS_IN_MB;
 
@@ -258,7 +258,7 @@ GPMemoryProtect_TrackStartupMemory(void)
 	if (optimizer_use_gpdb_allocators)
 		bytes -= 2L << BITS_IN_MB;
 #endif  /* GP_VERSION_NUM */
-#endif  /* USE_ORCA */
+//#endif  /* USE_ORCA_RE */
 
 	/* Leave some buffer for extensions like metrics_collector */
 	bytes += 2L << BITS_IN_MB;
