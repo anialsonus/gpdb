@@ -60,8 +60,6 @@ xact_end_create_callback(XactEvent event, void *arg)
 static void
 hook_create(RelFileNodeBackend rnode)
 {
-	uint64_t	hash;
-
 	if (next_file_create_hook)
 		next_file_create_hook(rnode);
 

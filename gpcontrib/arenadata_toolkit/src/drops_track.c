@@ -23,14 +23,12 @@ typedef struct
 typedef struct
 {
 	dlist_node	node;
-	uint32_t	idx;			/* idx in 'nodes' array; just for info */
 	track_relfilenode_t relfileNode;
 }	drops_track_node_t;
 
 
 typedef struct
 {
-	LWLock	   *lock;
 	dlist_head	head;
 	uint32_t	used_count;		/* count of used nodes */
 	int			unused_idx;		/* next unused idx or -1 if unknown; for
@@ -40,6 +38,7 @@ typedef struct
 
 static shmem_startup_hook_type next_shmem_startup_hook = NULL;
 static drops_track_t * drops_track;
+LWLock *drops_track_lock;
 
 static Size
 drops_track_calc_size()
@@ -58,11 +57,12 @@ drops_track_hook(void)
 	bool		found;
 	Size		size = drops_track_calc_size();
 
+	LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
+
 	drops_track = ShmemInitStruct("adb_track_files_drops", size, &found);
 
 	if (!found)
 	{
-		drops_track->lock = LWLockAssign();
 		drops_track->used_count = 0;
 		drops_track->unused_idx = 0;
 		dlist_init(&drops_track->head);
@@ -73,9 +73,12 @@ drops_track_hook(void)
 
 			track_node->relfileNode.relNode = InvalidOid;
 			track_node->relfileNode.dbNode = InvalidOid;
-			track_node->idx = i;
 		}
 	}
+
+	drops_track_lock = LWLockAssign();
+
+	LWLockRelease(AddinShmemInitLock);
 
 	if (next_shmem_startup_hook)
 		next_shmem_startup_hook();
@@ -134,7 +137,7 @@ drops_track_add(RelFileNode relfileNode)
 {
 	drops_track_node_t *track_node;
 
-	LWLockAcquire(drops_track->lock, LW_EXCLUSIVE);
+	LWLockAcquire(drops_track_lock, LW_EXCLUSIVE);
 
 	if (drops_track->used_count >= drops_count)
 	{
@@ -152,7 +155,7 @@ drops_track_add(RelFileNode relfileNode)
 	track_node->relfileNode.dbNode = relfileNode.dbNode;
 	dlist_push_tail(&drops_track->head, &track_node->node);
 
-	LWLockRelease(drops_track->lock);
+	LWLockRelease(drops_track_lock);
 }
 
 /* move relfilenodes from track to list */
@@ -162,11 +165,11 @@ drops_track_move(Oid dbid)
 	List	   *oids = NIL;
 	dlist_mutable_iter iter;
 
-	LWLockAcquire(drops_track->lock, LW_EXCLUSIVE);
+	LWLockAcquire(drops_track_lock, LW_EXCLUSIVE);
 
 	if (drops_track->used_count == 0)
 	{
-		LWLockRelease(drops_track->lock);
+		LWLockRelease(drops_track_lock);
 		return oids;
 	}
 
@@ -185,7 +188,7 @@ drops_track_move(Oid dbid)
 		}
 	}
 
-	LWLockRelease(drops_track->lock);
+	LWLockRelease(drops_track_lock);
 
 	return oids;
 }
@@ -199,7 +202,7 @@ drops_track_move_undo(List *oids, Oid dbid)
 	if (oids == NIL)
 		return;
 
-	LWLockAcquire(drops_track->lock, LW_EXCLUSIVE);
+	LWLockAcquire(drops_track_lock, LW_EXCLUSIVE);
 
 	foreach(cell, oids)
 	{
@@ -219,5 +222,5 @@ drops_track_move_undo(List *oids, Oid dbid)
 		dlist_push_head(&drops_track->head, &track_node->node);
 	}
 
-	LWLockRelease(drops_track->lock);
+	LWLockRelease(drops_track_lock);
 }
