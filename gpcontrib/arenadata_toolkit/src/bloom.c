@@ -48,6 +48,9 @@ bloom_isset(bloom_t * bloom, Oid relnode)
 {
 	uint32		hashes[MAX_BLOOM_HASH_FUNCS];
 
+	if (bloom->is_set_all)
+		return true;
+
 	tracking_hashes(relnode, bloom->size, hashes);
 
 	for (int i = 0; i < bloom_hash_num; ++i)

@@ -12,8 +12,8 @@
 typedef struct
 {
 	uint32_t	size;			/* size in bytes of 'map' */
-	int			is_set_all;		/* is all bits sets by bloom_set_all */
-	char		map[FLEXIBLE_ARRAY_MEMBER]; /* filter itself, array of bytes */ ;
+	uint8			is_set_all;		/* is all bits sets by bloom_set_all */
+	uint8		map[FLEXIBLE_ARRAY_MEMBER]; /* filter itself, array of bytes */ ;
 }	bloom_t;
 
 void		bloom_init(const uint32 bloom_size, bloom_t* bloom);
