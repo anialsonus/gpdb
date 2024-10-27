@@ -9,6 +9,7 @@
 #include "cdb/cdbdisp_query.h"
 #include "cdb/cdbdispatchresult.h"
 #include "cdb/cdbvars.h"
+#include "executor/spi.h"
 #include "libpq-fe.h"
 #include "postmaster/bgworker.h"
 #include "storage/proc.h"
@@ -23,11 +24,11 @@
 #include "tf_shmem.h"
 
 #define TOOLKIT_BINARY_NAME "arenadata_toolkit"
+#define SQL(...) #__VA_ARGS__
 
 typedef struct
 {
 	Oid			dbid;
-	Name		dbname;
 	bool		get_full_snapshot_on_recovery;
 }	tracked_db_t;
 
@@ -36,101 +37,6 @@ static volatile sig_atomic_t got_sighup = false;
 static volatile sig_atomic_t got_sigterm = false;
 
 void arenadata_toolkit_main(Datum);
-
-/* parse array of GUCs, find desired and analyze it */
-static bool
-is_db_tracked(ArrayType *array)
-{
-	bool		is_tracked = false;
-	Datum	   *elems;
-	bool	   *nulls;
-	int			nelems;
-
-	deconstruct_array(array, TEXTOID, -1, false, 'i',
-					  &elems, &nulls, &nelems);
-	for (int i = 0; i < nelems; i++)
-	{
-		char	   *s;
-		char	   *name;
-		char	   *value;
-
-		if (nulls[i])
-			continue;
-
-		s = TextDatumGetCString(elems[i]);
-		ParseLongOption(s, &name, &value);
-
-		if (!value)
-		{
-			free(name);
-			continue;
-		}
-
-		if (strcmp(name, "arenadata_toolkit.tracking_is_db_tracked") == 0 &&
-			strcmp(value, "t") == 0)
-		{
-			is_tracked = true;
-			break;
-		}
-
-		free(name);
-		if (value)
-			free(value);
-		pfree(s);
-	}
-
-	return is_tracked;
-}
-
-static bool
-full_snapshot_on_recovery(ArrayType *array)
-{
-	bool		take_snapshot = false;
-	bool		found = false;
-	Datum	   *elems;
-	bool	   *nulls;
-	int			nelems;
-
-	deconstruct_array(array, TEXTOID, -1, false, 'i',
-					  &elems, &nulls, &nelems);
-
-	for (int i = 0; i < nelems; i++)
-	{
-		char	   *s;
-		char	   *name;
-		char	   *value;
-
-		if (nulls[i])
-			continue;
-
-		s = TextDatumGetCString(elems[i]);
-		ParseLongOption(s, &name, &value);
-
-		if (!value)
-		{
-			free(name);
-			continue;
-		}
-
-		if (strcmp(name, "arenadata_toolkit.tracking_snapshot_on_recovery") == 0)
-		{
-			found = true;
-			if (strcmp(value, "t") == 0)
-				take_snapshot = true;
-			break;
-		}
-
-		free(name);
-		if (value)
-			free(value);
-		pfree(s);
-	}
-
-	if (!found)
-		take_snapshot = get_full_snapshot_on_recovery;
-
-	return take_snapshot;
-}
 
 /*
  * Signal handler for SIGTERM
@@ -169,50 +75,54 @@ tracking_sighup(SIGNAL_ARGS)
 static List*
 get_tracked_dbs()
 {
-	Relation	rel;
-	SysScanDesc scan;
-	HeapTuple	tup;
+	StringInfoData query;
 	List		*tracked_dbs = NIL;
 	tracked_db_t *trackedDb;
+	MemoryContext topcontext = CurrentMemoryContext;
 
-	rel = heap_open(DbRoleSettingRelationId, AccessShareLock);
-	scan = systable_beginscan(rel, InvalidOid, false, NULL, 0, NULL);
-	while (HeapTupleIsValid(tup = systable_getnext(scan)))
+	initStringInfo(&query);
+	appendStringInfo(&query, SQL(
+			WITH _ AS (
+					WITH _ AS (
+							SELECT "setdatabase", regexp_split_to_array(UNNEST("setconfig"), '=') AS "setconfig" FROM "pg_db_role_setting" WHERE "setrole"=0
+			) SELECT "setdatabase", json_object(array_agg("setconfig"[1]), array_agg("setconfig"[2])) AS "setconfig" FROM _ GROUP BY 1
+			)  select "setdatabase",
+			("setconfig"->>'arenadata_toolkit.tracking_snapshot_on_recovery')::bool as "snapshot" FROM _ WHERE
+			("setconfig"->>'arenadata_toolkit.tracking_is_db_tracked')::bool IS TRUE
+	));
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+		ereport(ERROR, (errmsg("SPI_connect failed")));
+
+	PushActiveSnapshot(GetTransactionSnapshot());
+
+	if (SPI_execute(query.data, true, 0) != SPI_OK_SELECT)
+		ereport(ERROR, (errmsg("SPI_execute failed")));
+
+	for (uint64 row = 0; row < SPI_processed; row++)
 	{
-		bool		isnull;
-		Datum		str_datum;
-		Datum		oid_datum;
-		ArrayType  *a;
+		HeapTuple val = SPI_tuptable->vals[row];
+		TupleDesc tupdesc = SPI_tuptable->tupdesc;
+		bool isnull = false;
+		Oid dbid = DatumGetObjectId(SPI_getbinval(val, tupdesc, SPI_fnumber(tupdesc, "setdatabase"), &isnull));
+		bool get_snapshot_on_recovery = DatumGetBool(SPI_getbinval(val, tupdesc, SPI_fnumber(tupdesc, "snapshot"), &isnull));
 
-		str_datum = heap_getattr(tup, Anum_pg_db_role_setting_setconfig,
-								 RelationGetDescr(rel), &isnull);
 		if (isnull)
-			continue;
+			get_snapshot_on_recovery = get_full_snapshot_on_recovery;
 
-		oid_datum = heap_getattr(tup, Anum_pg_db_role_setting_setrole,
-								 RelationGetDescr(rel), &isnull);
-		if (DatumGetObjectId(oid_datum) != InvalidOid)
-			continue;
+		MemoryContext oldcontext = MemoryContextSwitchTo(topcontext);
 
-		oid_datum = heap_getattr(tup, Anum_pg_db_role_setting_setdatabase,
-								 RelationGetDescr(rel), &isnull);
-		if (DatumGetObjectId(oid_datum) == InvalidOid)
-			continue;
+		trackedDb = (tracked_db_t *) palloc0(sizeof(tracked_db_t));
+		trackedDb->dbid = dbid;
+		trackedDb->get_full_snapshot_on_recovery = get_snapshot_on_recovery;
+		tracked_dbs = lappend(tracked_dbs, trackedDb);
 
-		a = DatumGetArrayTypeP(str_datum);
-
-		if (is_db_tracked(a))
-		{
-			trackedDb = (tracked_db_t *) palloc0(sizeof(tracked_db_t));
-
-			trackedDb->dbid = DatumGetObjectId(oid_datum);
-			trackedDb->get_full_snapshot_on_recovery = full_snapshot_on_recovery(a);
-			tracked_dbs = lappend(tracked_dbs, trackedDb);
-		}
+		MemoryContextSwitchTo(oldcontext);
 	}
+	SPI_finish();
+	PopActiveSnapshot();
 
-	systable_endscan(scan);
-	heap_close(rel, AccessShareLock);
+	pfree(query.data);
 
 	return tracked_dbs;
 }
@@ -239,6 +149,7 @@ worker_tracking_status_check()
 	List	   *tracked_dbs = NIL;
 
 	StartTransactionCommand();
+
 	tracked_dbs = get_tracked_dbs();
 
 	if (pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_is_initialized) && list_length(tracked_dbs) > 0)
@@ -260,7 +171,6 @@ worker_tracking_status_check()
 
 	if (tracked_dbs)
 		list_free_deep(tracked_dbs);
-
 	CommitTransactionCommand();
 }
 
@@ -305,10 +215,13 @@ arenadata_toolkit_main(Datum main_arg)
 		long timeout = tracking_worker_naptime_sec * 1000;
 
 		if (current_timeout <= 0)
+		{
 			INSTR_TIME_SET_CURRENT(start_time_timeout);
+			current_timeout = timeout;
+		}
 
 		rc = WaitLatch(&MyProc->procLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
-					   timeout);
+				current_timeout);
 
 		if (rc & WL_LATCH_SET)
 		{
