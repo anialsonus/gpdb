@@ -2,42 +2,79 @@
  * Simple bloom filter without using postgres primitives.
  */
 #include "bloom.h"
+#include "hashimpl.h"
+#include "tf_shmem.h"
 
-#include <string.h>
+static inline uint32
+mod_m(uint32 val, uint64 m)
+{
+	Assert(m <= PG_UINT32_MAX + UINT64CONST(1));
+	Assert(((m - 1) & m) == 0);
+
+	return val & (m - 1);
+}
+
+static void
+tracking_hashes(Oid node, uint32 bloom_size, uint32 *out_hashes)
+{
+	uint64		hash;
+	uint32		x,
+				y;
+	uint64		m;
+	int			i;
+
+	/* Use 64-bit hashing to get two independent 32-bit hashes */
+	hash = wyhash(node, bloom_hash_seed);
+	x = (uint32) hash;
+	y = (uint32) (hash >> 32);
+	m = bloom_size * 8;
+
+	x = mod_m(x, m);
+	y = mod_m(y, m);
+
+	/* Accumulate hashes */
+	out_hashes[0] = x;
+	for (i = 1; i < bloom_hash_num; i++)
+	{
+		x = mod_m(x + y, m);
+		y = mod_m(y + i, m);
+
+		out_hashes[i] = x;
+	}
+}
+
+bool
+bloom_isset(bloom_t * bloom, Oid relnode)
+{
+	uint32		hashes[MAX_BLOOM_HASH_FUNCS];
+
+	tracking_hashes(relnode, bloom->size, hashes);
+
+	for (int i = 0; i < bloom_hash_num; ++i)
+	{
+		if (!(bloom->map[hashes[i] >> 3] & (1 << (hashes[i] & 7))))
+			return false;
+	}
+	return true;
+}
 
 void
-bloom_init(const uint32_t bloom_size, bloom_t *bloom)
+bloom_set(bloom_t * bloom, Oid relnode)
+{
+	uint32		hashes[MAX_BLOOM_HASH_FUNCS];
+
+	tracking_hashes(relnode, bloom->size, hashes);
+	for (int i = 0; i < bloom_hash_num; ++i)
+	{
+		bloom->map[hashes[i] >> 3] |= 1 << (hashes[i] & 7);
+	}
+}
+
+void
+bloom_init(const uint32 bloom_size, bloom_t *bloom)
 {
 	bloom->size = bloom_size;
 	bloom_clear(bloom);
-}
-
-static uint32_t
-calc_idx(bloom_t * bloom, uint64_t hash, uint8_t *bit_idx)
-{
-	uint64_t	bloom_bit_idx = hash % (8 * bloom->size);
-
-	*bit_idx = bloom_bit_idx % 8;
-
-	return bloom_bit_idx / 8;
-}
-
-int
-bloom_isset(bloom_t * bloom, uint64_t hash)
-{
-	uint8_t		bit_idx;
-	uint32_t	byte_idx = calc_idx(bloom, hash, &bit_idx);
-
-	return bloom->map[byte_idx] & (1 << bit_idx);
-}
-
-void
-bloom_set(bloom_t * bloom, uint64_t hash)
-{
-	uint8_t		bit_idx;
-	uint32_t	byte_idx = calc_idx(bloom, hash, &bit_idx);
-
-	bloom->map[byte_idx] |= (1 << bit_idx);
 }
 
 void

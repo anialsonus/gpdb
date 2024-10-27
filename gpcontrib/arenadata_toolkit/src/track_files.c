@@ -458,7 +458,6 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		char		relkind;
 		char		relstorage;
 		HeapTuple	pg_class_tuple;
-		uint64_t	hash;
 		Form_pg_class relp;
 		int64 size;
 
@@ -505,8 +504,7 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 			continue;
 
 		/* Bloom filter check */
-		hash = bloom_set_calc_hash(&filenode, sizeof(filenode));
-		if (!bloom_isset(tf_get_global_state.bloom, hash))
+		if (!bloom_isset(tf_get_global_state.bloom, filenode))
 			continue;
 
 		relp = (Form_pg_class) GETSTRUCT(pg_class_tuple);

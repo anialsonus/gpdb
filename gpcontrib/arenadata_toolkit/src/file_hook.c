@@ -80,8 +80,7 @@ hook_create(RelFileNodeBackend rnode)
 	elog(DEBUG1, "hook_create: %d %d %d %d",
 	rnode.backend, rnode.node.dbNode, rnode.node.spcNode, rnode.node.relNode);
 
-	hash = bloom_set_calc_hash(&rnode.node.relNode, sizeof(rnode.node.relNode));
-	bloom_set(non_committed_bloom, hash);
+	bloom_set(non_committed_bloom, rnode.node.relNode);
 
 }
 

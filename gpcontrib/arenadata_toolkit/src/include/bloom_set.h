@@ -18,16 +18,15 @@ typedef struct
 /* static set of all bloom filters */
 typedef struct
 {
-	uint8_t		bloom_count;	/* count of bloom_entry_t in bloom_entries */
-	uint32_t	bloom_size;		/* size of bloom filter */
+	uint8	bloom_count;	/* count of bloom_entry_t in bloom_entries */
+	uint32	bloom_size;		/* size of bloom filter */
 	char		bloom_entries[FLEXIBLE_ARRAY_MEMBER];	/* array of
 														 * bloom_entry_t */
 }	bloom_set_t;
 
-void		bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size, bloom_set_t *bloom_set);
+void		bloom_set_init(const uint32 bloom_count, const uint32 bloom_size, bloom_set_t *bloom_set);
 bool		bloom_set_bind(bloom_set_t * bloom_set, Oid dbid);
 void		bloom_set_unbind(bloom_set_t * bloom_set, Oid dbid);
-uint64_t	bloom_set_calc_hash(const void *buf, size_t len);
 void		bloom_set_set(bloom_set_t * bloom_set, Oid dbid, Oid relNode);
 bool		bloom_set_move(bloom_set_t * bloom_set, Oid dbid, bloom_t *dest);
 bool		bloom_set_merge(bloom_set_t * bloom_set, Oid dbid, bloom_t * m_bloom);

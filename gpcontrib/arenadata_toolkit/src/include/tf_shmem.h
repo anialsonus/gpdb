@@ -6,6 +6,8 @@
 
 #include "bloom_set.h"
 
+#define MAX_BLOOM_HASH_FUNCS 6
+
 typedef struct
 {
 	pg_atomic_flag tracking_is_initialized;
@@ -23,6 +25,8 @@ extern tf_shared_state_t * tf_shared_state;
 extern LWLock *tf_state_lock;
 extern LWLock *bloom_set_lock;
 extern tf_entry_lock_t bloom_locks[];
+extern uint64 bloom_hash_seed;
+extern int bloom_hash_num;
 
 void		tf_shmem_init(void);
 void		tf_shmem_deinit(void);

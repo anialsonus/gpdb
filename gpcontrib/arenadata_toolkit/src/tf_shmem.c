@@ -6,11 +6,15 @@
 
 #include "arenadata_toolkit_guc.h"
 
+#include <math.h>
+
 static shmem_startup_hook_type next_shmem_startup_hook = NULL;
 tf_shared_state_t *tf_shared_state;
 LWLock *tf_state_lock;
 LWLock *bloom_set_lock;
 tf_entry_lock_t bloom_locks[MAX_DB_TRACK_COUNT];
+uint64 bloom_hash_seed;
+int bloom_hash_num;
 
 static void
 init_lwlocks(void)
@@ -23,6 +27,34 @@ init_lwlocks(void)
 		bloom_locks[i].lock = LWLockAssign();
 		bloom_locks[i].dbid = InvalidOid;
 	}
+}
+
+static int
+my_bloom_power(uint64 target_bitset_bits)
+{
+	int			bloom_power = -1;
+
+	while (target_bitset_bits > 0 && bloom_power < 32)
+	{
+		bloom_power++;
+		target_bitset_bits >>= 1;
+	}
+
+	return bloom_power;
+}
+
+static void
+init_bloom_invariants()
+{
+	uint64 total_bits;
+	int k;
+
+	total_bits = UINT64CONST(1) << my_bloom_power(bloom_size * 8);
+	bloom_size = total_bits / 8;
+
+	k = rint(log(2.0) * total_bits / TOTAL_ELEMENTS);
+	bloom_hash_num = Max(1, Min(k, MAX_BLOOM_HASH_FUNCS));
+	bloom_hash_seed = (uint64) random();
 }
 
 static Size
@@ -40,7 +72,10 @@ static void
 tf_shmem_hook(void)
 {
 	bool		found;
-	Size		size = tf_shmem_calc_size();
+	Size		size;
+
+	init_bloom_invariants();
+	size = tf_shmem_calc_size();
 
 	LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
 

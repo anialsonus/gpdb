@@ -486,7 +486,7 @@ get_heap_storage_total_bytes_soft(Relation rel, ForkNumber forknum, char *relpat
 		fill_relation_seg_path(segPath, MAXPATHLEN_WITHSEGNO, relpath, segno);
 		if (stat(segPath, &fst) < 0)
 		{
-			ereport(LOG, (errcode_for_file_access(),
+			ereport(DEBUG1, (errcode_for_file_access(),
 							errmsg("[arenadata_toolkit] could not stat file %s: %m", segPath)));
 			break;
 		}
@@ -515,7 +515,7 @@ calculate_ao_storage_perSegFile_soft(const int segno, void *ctx)
 
 	if (stat(segPath, &fst) < 0)
 	{
-		ereport(LOG, (errcode_for_file_access(),
+		ereport(DEBUG1, (errcode_for_file_access(),
 						errmsg("[arenadata_toolkit] could not access file %s: %m", segPath)));
 	}
 	else
