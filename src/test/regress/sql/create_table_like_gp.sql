@@ -91,4 +91,7 @@ PARTITION BY RANGE(b) (
   DEFAULT PARTITION extra
 );
 
+\d+ ctlt4_like
+\d+ ctlt4_like_1_prt_extra
+
 DROP TABLE ctlt4, ctlt4_like;
