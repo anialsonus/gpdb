@@ -7757,7 +7757,7 @@ StartupXLOG(void)
 						recoveryPausesHere();
 
 						/* drop into promote */
-						fallthrough;
+						fallthru;
 
 					case RECOVERY_TARGET_ACTION_PROMOTE:
 						break;

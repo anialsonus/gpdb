@@ -89,7 +89,7 @@ gin_btree_extract_query(FunctionCallInfo fcinfo,
 		case BTGreaterEqualStrategyNumber:
 		case BTGreaterStrategyNumber:
 			*ptr_partialmatch = true;
-			fallthrough;
+			fallthru;
 		case BTEqualStrategyNumber:
 			entries[0] = datum;
 			break;

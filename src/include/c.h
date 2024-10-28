@@ -1213,16 +1213,16 @@ typedef union PGAlignedXLogBlock
 
 #if defined __has_attribute
 	#if __has_attribute(fallthrough)
-		#define fallthrough __attribute__((fallthrough))
+		#define fallthru __attribute__((fallthrough))
 	#else
-		#define fallthrough do {} while (0)
+		#define fallthru do {} while (0)
 	#endif
 #else
 	/*
 	 * This is a fallback option for those compilers which don't support
-	 * "fallthrough" attribute. If that's the case, then do nothing.
+	 * "fallthru" attribute. If that's the case, then do nothing.
 	 */
-	#define fallthrough do {} while (0)
+	#define fallthru do {} while (0)
 #endif
 
 /* ----------------------------------------------------------------

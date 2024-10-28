@@ -71,7 +71,7 @@ ExecLimit_guts(PlanState *pstate)
 			 */
 			recompute_limits(node);
 
-			fallthrough;
+			fallthru;
 
 		case LIMIT_RESCAN:
 
