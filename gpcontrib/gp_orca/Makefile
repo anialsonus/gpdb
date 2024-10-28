@@ -3,6 +3,10 @@ MODULE_big = gp_orca
 
 OBJS = gporca.o
 
+SUBDIRS = gpopt gporca
+
+
+
 REGRESS = ""
 EXTRA_REGRESS_OPTS = --init-file=$(top_builddir)/src/test/regress/init_file
 
@@ -16,3 +20,5 @@ top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
+
+include $(top_srcdir)/src/backend/common.mk
