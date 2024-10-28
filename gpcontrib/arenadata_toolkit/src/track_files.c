@@ -57,8 +57,8 @@ typedef struct
 	bloom_t    *rollback_bloom;
 	List	   *drops;
 	ListCell   *next_drop;
-	List	   *relkinds;
-	List	   *relstorages;
+	uint64	   relkinds;
+	uint64	   relstorages;
 	List	   *schema_oids;
 }	tf_get_global_state_t;
 
@@ -113,8 +113,8 @@ xact_end_get_callback(XactEvent event, void *arg)
 	tf_get_global_state.rollback_bloom = NULL;
 	tf_get_global_state.drops = NIL;
 	tf_get_global_state.next_drop = NULL;
-	tf_get_global_state.relkinds = NIL;
-	tf_get_global_state.relstorages = NIL;
+	tf_get_global_state.relkinds = 0;
+	tf_get_global_state.relstorages = 0;
 	tf_get_global_state.schema_oids = NIL;
 
 }
@@ -147,6 +147,41 @@ split_string_to_list(const char *input)
 
 	return result;
 }
+
+static uint64
+list_to_bits(const char *input)
+{
+	char	   *input_copy;
+	char	   *token;
+	uint64	bits = 0;
+
+	if (input == NULL)
+		return 0;
+
+	input_copy = pstrdup(input);
+
+	token = strtok(input_copy, ",");
+
+	while (token != NULL)
+	{
+		if (*token != '\0')
+		{
+			char c = *token;
+
+			if (c >= 'a' && c <= 'z')
+				bits |= (1UL << (c - 'a'));
+			else
+				bits |= (1UL << (26 + (c - 'A')));
+		}
+
+		token = strtok(NULL, ",");
+	}
+
+	pfree(input_copy);
+
+	return bits;
+}
+
 
 static void
 get_filters_from_guc()
@@ -218,13 +253,13 @@ get_filters_from_guc()
 	else
 		schema_names = split_string_to_list(tracked_schemas);
 	if (current_relstorages)
-		tf_get_global_state.relstorages = split_string_to_list(current_relstorages);
+		tf_get_global_state.relstorages = list_to_bits(current_relstorages);
 	else
-		tf_get_global_state.relstorages = split_string_to_list(tracked_rel_storages);
+		tf_get_global_state.relstorages = list_to_bits(tracked_rel_storages);
 	if (current_relkinds)
-		tf_get_global_state.relkinds = split_string_to_list(current_relkinds);
+		tf_get_global_state.relkinds = list_to_bits(current_relkinds);
 	else
-		tf_get_global_state.relkinds = split_string_to_list(tracked_rel_kinds);
+		tf_get_global_state.relkinds = list_to_bits(tracked_rel_kinds);
 
 	foreach(lc, schema_names)
 	{
@@ -267,41 +302,12 @@ schema_is_tracked(Oid schema)
 }
 
 static bool
-relkind_is_tracked(char relkind)
+kind_is_tracked(char type, uint64 allowed_kinds)
 {
-	ListCell   *lc;
-
-	if (tf_get_global_state.relkinds == NIL)
-		return false;
-
-	foreach(lc, tf_get_global_state.relkinds)
-	{
-		char	   *tracked_relkind = (char *)lfirst(lc);
-
-		if (tracked_relkind != NULL && *tracked_relkind == relkind)
-			return true;
-	}
-
-	return false;
-}
-
-static bool
-relstorage_is_tracked(char relstorage)
-{
-	ListCell   *lc;
-
-	if (tf_get_global_state.relstorages == NIL)
-		return false;
-
-	foreach(lc, tf_get_global_state.relstorages)
-	{
-		char	   *tracked_relstorage = (char *)lfirst(lc);
-
-		if (tracked_relstorage != NULL && *tracked_relstorage == relstorage)
-			return true;
-	}
-
-	return false;
+	if (type >= 'a' && type <= 'z')
+		return (allowed_kinds & (1UL << (type - 'a'))) != 0;
+	else
+		return (allowed_kinds & (1UL << (26 + (type - 'A')))) != 0;
 }
 
 /*
@@ -376,8 +382,8 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		if (tf_get_global_state.schema_oids == NIL)
 			get_filters_from_guc();
 
-		if (tf_get_global_state.relstorages == NIL ||
-			tf_get_global_state.relkinds == NIL ||
+		if (tf_get_global_state.relstorages == 0 ||
+			tf_get_global_state.relkinds == 0 ||
 			tf_get_global_state.schema_oids == NIL)
 			ereport(ERROR,
 					(errmsg("Cannot get tracking configuration (schemas, relkinds, reltorage) for database %u", MyDatabaseId)));
@@ -437,22 +443,22 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 			break;
 		}
 
-		datums[6] = heap_getattr(pg_class_tuple, Anum_pg_class_relnamespace, RelationGetDescr(state->pg_class_rel), &nulls[6]);
-		relnamespace = DatumGetObjectId(datums[6]);
-
-		if (!schema_is_tracked(relnamespace))
-			continue;
-
 		datums[7] = heap_getattr(pg_class_tuple, Anum_pg_class_relkind, RelationGetDescr(state->pg_class_rel), &nulls[7]);
 		relkind = DatumGetChar(datums[7]);
 
-		if (!relkind_is_tracked(relkind))
+		if (!kind_is_tracked(relkind, tf_get_global_state.relkinds))
 			continue;
 
 		datums[8] = heap_getattr(pg_class_tuple, Anum_pg_class_relstorage, RelationGetDescr(state->pg_class_rel), &nulls[8]);
 		relstorage = DatumGetChar(datums[8]);
 
-		if (!relstorage_is_tracked(relstorage))
+		if (!kind_is_tracked(relstorage, tf_get_global_state.relstorages))
+			continue;
+
+		datums[6] = heap_getattr(pg_class_tuple, Anum_pg_class_relnamespace, RelationGetDescr(state->pg_class_rel), &nulls[6]);
+		relnamespace = DatumGetObjectId(datums[6]);
+
+		if (!schema_is_tracked(relnamespace))
 			continue;
 
 		datums[0] = ObjectIdGetDatum(HeapTupleGetOid(pg_class_tuple));
@@ -1069,10 +1075,24 @@ tracking_unregister_schema(PG_FUNCTION_ARGS)
 static bool
 is_valid_relkind(char relkind)
 {
-	return (relkind == 'r' || relkind == 'i' || relkind == 'S' ||
-			relkind == 't' || relkind == 'v' || relkind == 'c' ||
-			relkind == 'f' || relkind == 'u' || relkind == 'm' ||
-			relkind == 'o' || relkind == 'b' || relkind == 'M');
+	switch (relkind)
+	{
+		case 'r':
+		case 'i':
+		case 'S':
+		case 't':
+		case 'v':
+		case 'c':
+		case 'f':
+		case 'u':
+		case 'm':
+		case 'o':
+		case 'b':
+		case 'M':
+			return true;
+		default:
+			return false;
+	}
 }
 
 Datum
@@ -1159,8 +1179,18 @@ tracking_set_relkinds(PG_FUNCTION_ARGS)
 static bool
 is_valid_relstorage(char relstorage)
 {
-	return (relstorage == 'h' || relstorage == 'a' || relstorage == 'c' ||
-			relstorage == 'x' || relstorage == 'v' || relstorage == 'f');
+	switch (relstorage)
+	{
+		case 'h':
+		case 'a':
+		case 'c':
+		case 'x':
+		case 'v':
+		case 'f':
+			return true;
+		default:
+			return false;
+	}
 }
 
 Datum
