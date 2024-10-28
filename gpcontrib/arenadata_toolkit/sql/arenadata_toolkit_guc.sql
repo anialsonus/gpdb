@@ -169,7 +169,3 @@ ALTER DATABASE tracking1 SET arenadata_toolkit.tracking_schemas =  "pg_catalog, 
 \c contrib_regression;
 
 DROP DATABASE tracking1;
--- start_ignore
-\! gpconfig -r shared_preload_libraries;
-\! gpstop -raq -M fast
--- end_ignore

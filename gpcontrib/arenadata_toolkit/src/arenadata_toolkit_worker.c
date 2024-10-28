@@ -82,14 +82,15 @@ get_tracked_dbs()
 
 	initStringInfo(&query);
 	appendStringInfo(&query, SQL(
-								 WITH _ AS(
-										   WITH _ AS(
-													 SELECT "setdatabase", regexp_split_to_array(UNNEST("setconfig"), '=') AS "setconfig" FROM "pg_db_role_setting" WHERE "setrole" = 0
-													 ) SELECT "setdatabase", json_object(array_agg("setconfig"[1]), array_agg("setconfig"[2])) AS "setconfig" FROM _ GROUP BY 1
-										   ) select "setdatabase",
-("setconfig"->> 'arenadata_toolkit.tracking_snapshot_on_recovery'): :bool as "snapshot" FROM _ WHERE
-("setconfig"->> 'arenadata_toolkit.tracking_is_db_tracked'): :bool IS TRUE
-								 ));
+		WITH _ AS (
+			WITH _ AS (
+				SELECT "setdatabase", regexp_split_to_array(UNNEST("setconfig"), '=') AS "setconfig"
+				FROM "pg_db_role_setting" WHERE "setrole"=0)
+			SELECT "setdatabase", json_object(array_agg("setconfig"[1]), array_agg("setconfig"[2])) AS "setconfig"
+			FROM _ GROUP BY 1)
+		SELECT "setdatabase",
+				("setconfig"->>'arenadata_toolkit.tracking_snapshot_on_recovery')::bool as "snapshot" FROM _ WHERE
+				("setconfig"->>'arenadata_toolkit.tracking_is_db_tracked')::bool IS TRUE));
 
 	if (SPI_connect() != SPI_OK_CONNECT)
 		ereport(ERROR, (errmsg("SPI_connect failed")));

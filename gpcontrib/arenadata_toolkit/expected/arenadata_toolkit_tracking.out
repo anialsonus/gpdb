@@ -11,16 +11,16 @@ SELECT * FROM arenadata_toolkit.tracking_get_track();
 ERROR:  database 102559 is not tracked
 HINT:  Call 'arenadata_toolkit.tracking_register_db()'to enable tracking
 CONTEXT:  SQL statement "SELECT * FROM arenadata_toolkit.tracking_get_track_main()"
-SELECT arenadata_toolkit.tracking_register_db();
- tracking_register_db 
-----------------------
- t
-(1 row)
-
 SELECT pg_sleep(current_setting('arenadata_toolkit.tracking_worker_naptime_sec')::int * 2);
  pg_sleep 
 ----------
  
+(1 row)
+
+SELECT arenadata_toolkit.tracking_register_db();
+ tracking_register_db 
+----------------------
+ t
 (1 row)
 
 -- 2. Test initial snapshot behaviour. Triggering initial snapshot leads to

@@ -1,7 +1,5 @@
 -- Tests for size tracking logic introduced in version 1.7
 -- start_ignore
-\! gpconfig -c shared_preload_libraries -v 'arenadata_toolkit'
-\! gpstop -raq -M fast
 \! gpconfig -c arenadata_toolkit.tracking_worker_naptime_sec -v '5'
 \! gpstop -u
 \c
@@ -20,8 +18,8 @@ CREATE EXTENSION arenadata_toolkit;
 -- 1. Test getting track on not registered database;
 SELECT * FROM arenadata_toolkit.tracking_get_track();
 
-SELECT arenadata_toolkit.tracking_register_db();
 SELECT pg_sleep(current_setting('arenadata_toolkit.tracking_worker_naptime_sec')::int * 2);
+SELECT arenadata_toolkit.tracking_register_db();
 
 -- 2. Test initial snapshot behaviour. Triggering initial snapshot leads to
 -- setting up the bloom filter such that all relfilenodes are considered.
