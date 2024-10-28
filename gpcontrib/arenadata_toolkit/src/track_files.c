@@ -76,7 +76,7 @@ typedef struct
 	Oid		   *typIOParams;
 }	tf_get_func_state_t;
 
-tf_get_global_state_t tf_get_global_state = {NULL, NULL, NIL, NULL, NIL, NIL, NIL};
+tf_get_global_state_t tf_get_global_state = {0};
 
 static inline void
 tf_check_shmem_error(void)
@@ -109,42 +109,13 @@ xact_end_get_callback(XactEvent event, void *arg)
 		drops_track_move_undo(tf_get_global_state.drops, MyDatabaseId);
 	}
 
-	if (tf_get_global_state.bloom)
-	{
-		pfree(tf_get_global_state.bloom);
-		tf_get_global_state.bloom = NULL;
-	}
-
-	if (tf_get_global_state.rollback_bloom)
-	{
-		pfree(tf_get_global_state.rollback_bloom);
-		tf_get_global_state.rollback_bloom = NULL;
-	}
-
-	if (tf_get_global_state.drops != NIL)
-	{
-		pfree(tf_get_global_state.drops);
-		tf_get_global_state.drops = NIL;
-		tf_get_global_state.next_drop = NULL;
-	}
-
-	if (tf_get_global_state.relkinds != NIL)
-	{
-		pfree(tf_get_global_state.relkinds);
-		tf_get_global_state.relkinds = NIL;
-	}
-
-	if (tf_get_global_state.relstorages != NIL)
-	{
-		pfree(tf_get_global_state.relstorages);
-		tf_get_global_state.relstorages = NIL;
-	}
-
-	if (tf_get_global_state.schema_oids != NIL)
-	{
-		pfree(tf_get_global_state.schema_oids);
-		tf_get_global_state.schema_oids = NIL;
-	}
+	tf_get_global_state.bloom = NULL;
+	tf_get_global_state.rollback_bloom = NULL;
+	tf_get_global_state.drops = NIL;
+	tf_get_global_state.next_drop = NULL;
+	tf_get_global_state.relkinds = NIL;
+	tf_get_global_state.relstorages = NIL;
+	tf_get_global_state.schema_oids = NIL;
 
 }
 
