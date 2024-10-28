@@ -20,7 +20,7 @@ typedef struct
 {
 	uint8	bloom_count;	/* count of bloom_entry_t in bloom_entries */
 	uint32	bloom_size;		/* size of bloom filter */
-	char		bloom_entries[FLEXIBLE_ARRAY_MEMBER];	/* array of
+	char	bloom_entries[FLEXIBLE_ARRAY_MEMBER];	/* array of
 														 * bloom_entry_t */
 }	bloom_set_t;
 

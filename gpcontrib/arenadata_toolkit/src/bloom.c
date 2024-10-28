@@ -14,6 +14,15 @@ mod_m(uint32 val, uint64 m)
 	return val & (m - 1);
 }
 
+/*
+ * Generate k positions in bloom filter for relfilenode oid.
+ *
+ * The enhanced double hashing is used (Dillinger P, Manolios P. Bloom Filters
+ * in Probabilistic Verification. 2004.) to produce k positions from 2 independent
+ * hashes.
+ *
+ * out_hashes is out parameter which is filled with k bit indices.
+ */
 static void
 tracking_hashes(Oid node, uint32 bloom_size, uint32 *out_hashes)
 {

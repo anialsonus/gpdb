@@ -16,6 +16,9 @@ tf_entry_lock_t bloom_locks[MAX_DB_TRACK_COUNT];
 uint64 bloom_hash_seed;
 int bloom_hash_num;
 
+/*
+ * Separate initialization of LWLocks;
+ */
 static void
 init_lwlocks(void)
 {
@@ -29,6 +32,10 @@ init_lwlocks(void)
 	}
 }
 
+/*
+ * Calculate the closes power of 2 for given
+ * length.
+ */
 static int
 my_bloom_power(uint64 target_bitset_bits)
 {
@@ -43,6 +50,15 @@ my_bloom_power(uint64 target_bitset_bits)
 	return bloom_power;
 }
 
+/*
+ * In order to decrease false positive ratio and make
+ * Bloom filter close to theoretical form the calculation
+ * of k hashes is suggested. The value k is estimated
+ * as optimal value minimizing fp ratio. The bloom_size
+ * is also adjusted to power of 2.
+ * Additionally, the seed for hash calculation is initialized
+ * here.
+ */
 static void
 init_bloom_invariants()
 {
@@ -99,7 +115,10 @@ tf_shmem_hook(void)
 void
 tf_shmem_init()
 {
-	/* don't forget to add additional locks */
+	/*
+	 * tf_state_lock and bloom_set_lock locks
+	 * plus one lock for each db entry.
+	 */
 	RequestAddinLWLocks(2 + db_track_count);
 	RequestAddinShmemSpace(tf_shmem_calc_size());
 
@@ -113,6 +132,9 @@ tf_shmem_deinit(void)
 	shmem_startup_hook = next_shmem_startup_hook;
 }
 
+/*
+ * Acquire lock corresponding to dbid in bloom_set.
+ */
 LWLock *
 LWLockAcquireEntry(Oid dbid, LWLockMode mode)
 {
@@ -131,7 +153,9 @@ LWLockAcquireEntry(Oid dbid, LWLockMode mode)
 	return NULL;
 }
 
-
+/*
+ * Bind LWLock to tracked dbid.
+ */
 void
 LWLockBindEntry(Oid dbid)
 {
@@ -151,6 +175,9 @@ LWLockBindEntry(Oid dbid)
 	LWLockRelease(tf_state_lock);
 }
 
+/*
+ * Unbind LWLock from tracked dbid.
+ */
 void
 LWLockUnbindEntry(Oid dbid)
 {

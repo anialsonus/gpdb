@@ -30,7 +30,7 @@ extern int bloom_hash_num;
 
 void		tf_shmem_init(void);
 void		tf_shmem_deinit(void);
-LWLock *		LWLockAcquireEntry(Oid dbid, LWLockMode mode);
+LWLock *	LWLockAcquireEntry(Oid dbid, LWLockMode mode);
 void		LWLockBindEntry(Oid dbid);
 void		LWLockUnbindEntry(Oid dbid);
 

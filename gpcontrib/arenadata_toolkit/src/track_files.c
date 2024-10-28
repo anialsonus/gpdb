@@ -47,32 +47,32 @@ PG_FUNCTION_INFO_V1(tracking_get_track_main);
 
 typedef struct
 {
-	Relation	pg_class_rel;
+	Relation	pg_class_rel; /*pg_class relation*/
 	SysScanDesc scan;
 }	tf_main_func_state_t;
 
 typedef struct
 {
-	bloom_t    *bloom;
-	bloom_t    *rollback_bloom;
-	List	   *drops;
+	bloom_t    *bloom; /* local copy of shared bloom */
+	bloom_t    *rollback_bloom; /* bloom for rollback in case of sequential track acquisition*/
+	List	   *drops; /* drop list for current db */
 	ListCell   *next_drop;
-	uint64	   relkinds;
-	uint64	   relstorages;
-	List	   *schema_oids;
+	uint64	   relkinds; /* tracking relkinds */
+	uint64	   relstorages; /* tracking relstorages */
+	List	   *schema_oids; /*tracking schemas */
 }	tf_get_global_state_t;
 
 typedef struct
 {
-	CdbPgResults cdb_results;
+	CdbPgResults cdb_results; /*results of CdbDispatch*/
 	int			current_result;
 	int			current_row;
 
-	SPITupleTable *entry_result;
+	SPITupleTable *entry_result; /*results from SPI queries */
 	uint64		entry_processed;
 	int			entry_current_row;
 
-	FmgrInfo   *inputFuncInfos;
+	FmgrInfo   *inputFuncInfos; /* FuncInfos for string to Datum values transformation */
 	Oid		   *typIOParams;
 }	tf_get_func_state_t;
 
@@ -181,7 +181,6 @@ list_to_bits(const char *input)
 
 	return bits;
 }
-
 
 static void
 get_filters_from_guc()

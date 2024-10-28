@@ -426,7 +426,7 @@ dbsize_calc_size(Form_pg_class pg_class_data)
 	rel.rd_rel = pg_class_data;
 
 	/*
-	 * Initialize BackendIf field of RelationData.
+	 * Initialize BackendId field of RelationData.
 	 */
 	switch (rel.rd_rel->relpersistence)
 	{

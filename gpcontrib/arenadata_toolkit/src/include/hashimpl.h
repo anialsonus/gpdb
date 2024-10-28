@@ -5,6 +5,16 @@
 
 #define _wyrot(x) (((x)>>32)|((x)<<32))
 
+/*
+ * This is an implementation of the wyhash algorithm - a modern,
+ * fast non-cryptographic hash function designed by Wang Yi. The code
+ * is unlicensed, therefore, we can use it for the Bloom filter without doubts.
+ * _wymum: Multiplication-based mixing function.
+ * _wymix: Combines multiplication mixing with XOR operations.
+ * wyhash: Main hash function that processes a 32-bit key with a seed.
+ * This algorithm has better properties than Postgres's Jenkins hash and
+ * provides good avalanche effect.
+ */
 static inline void _wymum(uint64 *A, uint64 *B){
 #if(SIZEOF_VOID_P < 8)
   uint64 hh=(*A>>32)*(*B>>32),
@@ -26,7 +36,6 @@ static inline void _wymum(uint64 *A, uint64 *B){
 #endif
 }
 
-//multiply and xor mix function, aka MUM
 static inline uint64 _wymix(uint64 A, uint64 B){ _wymum(&A,&B); return A^B; }
 
 static inline uint64 wyhash(uint32 key, uint64 seed){
