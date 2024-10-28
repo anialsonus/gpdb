@@ -1120,7 +1120,7 @@ NUMDesc_prepare(NUMDesc *num, FormatNode *n)
 		case NUM_D:
 			num->flag |= NUM_F_LDECIMAL;
 			num->need_locale = true;
-			FALL_THROUGH
+			fallthrough;
 		case NUM_DEC:
 			if (IS_DECIMAL(num))
 				ereport(ERROR,

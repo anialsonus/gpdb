@@ -2712,7 +2712,7 @@ get_matching_list_bounds(PartitionPruneContext *context,
 
 		case BTGreaterEqualStrategyNumber:
 			inclusive = true;
-			FALL_THROUGH
+			fallthrough;
 		case BTGreaterStrategyNumber:
 			off = partition_list_bsearch(partsupfunc,
 										 partcollation,
@@ -2747,7 +2747,7 @@ get_matching_list_bounds(PartitionPruneContext *context,
 
 		case BTLessEqualStrategyNumber:
 			inclusive = true;
-			FALL_THROUGH
+			fallthrough;
 		case BTLessStrategyNumber:
 			off = partition_list_bsearch(partsupfunc,
 										 partcollation,
@@ -2994,7 +2994,7 @@ get_matching_range_bounds(PartitionPruneContext *context,
 
 		case BTGreaterEqualStrategyNumber:
 			inclusive = true;
-			FALL_THROUGH
+			fallthrough;
 		case BTGreaterStrategyNumber:
 
 			/*
@@ -3075,7 +3075,7 @@ get_matching_range_bounds(PartitionPruneContext *context,
 
 		case BTLessEqualStrategyNumber:
 			inclusive = true;
-			FALL_THROUGH
+			fallthrough;
 		case BTLessStrategyNumber:
 
 			/*

@@ -333,7 +333,7 @@ globexp2(ptr, pattern, pglob, rv)
 				i--;
 				break;
 			}
-			FALL_THROUGH
+			fallthrough;
 		case COMMA:
 			if (i && *pm == COMMA)
 				break;

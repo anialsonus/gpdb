@@ -6426,12 +6426,12 @@ bgworker_should_start_now(BgWorkerStartTime start_time)
 				return true;
 			if (start_time == BgWorkerStart_RecoveryFinished)
 				return true;
-			FALL_THROUGH
+			fallthrough;
 
 		case PM_HOT_STANDBY:
 			if (start_time == BgWorkerStart_ConsistentState)
 				return true;
-			FALL_THROUGH
+			fallthrough;
 
 		case PM_RECOVERY:
 		case PM_STARTUP:

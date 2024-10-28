@@ -331,7 +331,7 @@ flattenJsonPathParseItem(StringInfo buf, JsonPathParseItem *item,
 			break;
 		case jpiFilter:
 			argNestingLevel++;
-			FALL_THROUGH
+			fallthrough;
 		case jpiIsUnknown:
 		case jpiNot:
 		case jpiPlus:
@@ -440,10 +440,10 @@ alignStringInfoInt(StringInfo buf)
 	{
 		case 3:
 			appendStringInfoCharMacro(buf, 0);
-			FALL_THROUGH
+			fallthrough;
 		case 2:
 			appendStringInfoCharMacro(buf, 0);
-			FALL_THROUGH
+			fallthrough;
 		case 1:
 			appendStringInfoCharMacro(buf, 0);
 	}
@@ -852,7 +852,7 @@ jspInitByBuffer(JsonPathItem *v, char *base, int32 pos)
 		case jpiString:
 		case jpiVariable:
 			read_int32(v->content.value.datalen, base, pos);
-			FALL_THROUGH
+			fallthrough;
 		case jpiNumeric:
 		case jpiBool:
 			v->content.value.data = base + pos;

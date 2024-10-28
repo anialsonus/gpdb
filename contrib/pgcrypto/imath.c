@@ -1979,7 +1979,7 @@ mp_int_read_cstring(mp_int z, mp_size radix, const char *str,
 			break;
 		case '+':
 			++str;
-			FALL_THROUGH
+			fallthrough;
 		default:
 			z->sign = MP_ZPOS;
 			break;
