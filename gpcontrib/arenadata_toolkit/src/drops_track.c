@@ -174,7 +174,7 @@ drops_track_move(Oid dbid)
 	if (drops_track->used_count == 0)
 	{
 		LWLockRelease(drops_track_lock);
-		return oids;
+		return NIL;
 	}
 
 	dlist_foreach_modify(iter, &drops_track->head)

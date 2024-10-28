@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define MAX_BLOOM_HASH_FUNCS 6
-#define TOTAL_ELEMENTS 100000000UL
+#define TOTAL_ELEMENTS 10000000UL
 #define FULL_BLOOM_SIZE(size) (offsetof(bloom_t, map) + size)
 
 typedef struct
