@@ -246,10 +246,6 @@ endif
 	$(INSTALL_DATA) $(srcdir)/libpq/pg_hba.conf.sample '$(DESTDIR)$(datadir)/pg_hba.conf.sample'
 	$(INSTALL_DATA) $(srcdir)/libpq/pg_ident.conf.sample '$(DESTDIR)$(datadir)/pg_ident.conf.sample'
 	$(INSTALL_DATA) $(srcdir)/utils/misc/postgresql.conf.sample '$(DESTDIR)$(datadir)/postgresql.conf.sample'
-ifeq ($(enable_orca), yes)
-	$(MAKE) -C gporca $@ INSTLOC=$(DESTDIR)$(libdir)
-	$(MAKE) -C gpopt $@ INSTLOC=$(DESTDIR)$(libdir)
-endif
 
 ifeq ($(with_llvm), yes)
 install-bin: install-postgres-bitcode

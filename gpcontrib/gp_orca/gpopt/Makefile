@@ -5,7 +5,7 @@
 #
 #-------------------------------------------------------------------------
 
-subdir = src/backend/gpopt
+subdir = gpcontrib/gp_orca/gpopt
 top_builddir = ../../..
 include $(top_builddir)/src/Makefile.global
 include $(srcdir)/gpopt.mk
