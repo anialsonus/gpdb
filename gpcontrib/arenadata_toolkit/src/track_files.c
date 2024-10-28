@@ -45,6 +45,8 @@ PG_FUNCTION_INFO_V1(tracking_is_initial_snapshot_triggered);
 PG_FUNCTION_INFO_V1(tracking_get_track);
 PG_FUNCTION_INFO_V1(tracking_get_track_main);
 
+#define GET_TRACK_TUPDESC_LEN 9
+
 typedef struct
 {
 	Relation	pg_class_rel; /*pg_class relation*/
@@ -318,8 +320,8 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 	FuncCallContext *funcctx;
 	tf_main_func_state_t *state;
 	HeapTuple	result;
-	Datum		datums[9];
-	bool		nulls[9] = {0};
+	Datum		datums[GET_TRACK_TUPDESC_LEN];
+	bool		nulls[GET_TRACK_TUPDESC_LEN] = {0};
 
 	tf_check_shmem_error();
 
@@ -391,7 +393,7 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		funcctx->tuple_desc = CreateTemplateTupleDesc(9, false);
+		funcctx->tuple_desc = CreateTemplateTupleDesc(GET_TRACK_TUPDESC_LEN, false);
 		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "relid", OIDOID, -1, 0);
 		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)2, "name", NAMEOID, -1, 0);
 		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)3, "relfilenode", OIDOID, -1, 0);
@@ -524,8 +526,8 @@ tracking_get_track(PG_FUNCTION_ARGS)
 	FuncCallContext *funcctx;
 	tf_get_func_state_t *state;
 	HeapTuple	result;
-	Datum		values[9];
-	bool		nulls[9] = {0};
+	Datum		values[GET_TRACK_TUPDESC_LEN];
+	bool		nulls[GET_TRACK_TUPDESC_LEN] = {0};
 
 	tf_check_shmem_error();
 
