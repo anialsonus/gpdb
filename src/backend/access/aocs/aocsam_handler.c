@@ -14,6 +14,7 @@
  */
 #include "postgres.h"
 
+#include "../appendonly/appendonly_vacuum.h"
 #include "access/aomd.h"
 #include "access/appendonlywriter.h"
 #include "access/heapam.h"
@@ -29,7 +30,6 @@
 #include "catalog/pg_attribute_encoding.h"
 #include "catalog/storage.h"
 #include "catalog/storage_xlog.h"
-#include "cdb/appendonly_vacuum.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbaocsam.h"
 #include "cdb/cdbvars.h"

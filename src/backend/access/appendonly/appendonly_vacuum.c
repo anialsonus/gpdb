@@ -123,6 +123,7 @@
 #include "access/multixact.h"
 #include "access/visibilitymap.h"
 #include "access/xact.h"
+#include "appendonly_vacuum.h"
 #include "catalog/pg_appendonly.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbtm.h"
@@ -143,7 +144,6 @@
 #include "utils/lsyscache.h"
 #include "utils/pg_rusage.h"
 #include "cdb/cdbappendonlyblockdirectory.h"
-#include "cdb/appendonly_vacuum.h"
 
 
 static void vacuum_appendonly_index(Relation indexRelation,
