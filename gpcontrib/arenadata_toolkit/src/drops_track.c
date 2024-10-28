@@ -13,20 +13,24 @@
 
 #define TRACK_NODE_GET(track, i) (void *)(track->nodes + i * sizeof(drops_track_node_t));
 
+/*
+ * Drop track element. Stores just relfilenode
+ * and dbid.
+ */
 typedef struct
 {
 	Oid			relNode;
 	Oid			dbNode;
 }	track_relfilenode_t;
 
-/* doubly linked list node of dropped file nodes */
+/* Doubly linked list node of dropped file nodes */
 typedef struct
 {
 	dlist_node	node;
 	track_relfilenode_t relfileNode;
 }	drops_track_node_t;
 
-
+/* Drops track */
 typedef struct
 {
 	dlist_head	head;
@@ -100,7 +104,7 @@ drops_track_deinit(void)
 	shmem_startup_hook = next_shmem_startup_hook;
 }
 
-/* find unused node; this should be heavily reworked or optimized */
+/* Find unused node i linked list. */
 static drops_track_node_t * find_empty_node()
 {
 	drops_track_node_t *track_node = NULL;
@@ -131,7 +135,7 @@ static drops_track_node_t * find_empty_node()
 	return track_node;
 }
 
-/* add relNode to track; old node is dropped if no space */
+/* Add relNode to track. Old node is dropped if no space */
 void
 drops_track_add(RelFileNode relfileNode)
 {
@@ -158,7 +162,7 @@ drops_track_add(RelFileNode relfileNode)
 	LWLockRelease(drops_track_lock);
 }
 
-/* move relfilenodes from track to list */
+/* Extract relfilenodes corresponding to specific db into separeate list */
 List *
 drops_track_move(Oid dbid)
 {
@@ -193,7 +197,9 @@ drops_track_move(Oid dbid)
 	return oids;
 }
 
-/* undo moving of relfilenodes; old nodes are dropped if no space */
+/* Return extracted dropped relfilenodes.
+ * Old nodes are removed if no space.
+ */
 void
 drops_track_move_undo(List *oids, Oid dbid)
 {

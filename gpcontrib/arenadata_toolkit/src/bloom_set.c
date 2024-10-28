@@ -9,21 +9,21 @@
 #define BLOOM_ENTRY_GET(set, i) (void *)(set->bloom_entries + i * FULL_BLOOM_ENTRY_SIZE(set->bloom_size));
 
 static void
-bloom_entry_init(const uint32_t bloom_size, bloom_entry_t *bloom_entry)
+bloom_entry_init(const uint32_t bloom_size, bloom_entry_t * bloom_entry)
 {
 	bloom_entry->dbid = InvalidOid;
 	bloom_init(bloom_size, &bloom_entry->bloom);
 }
 
 void
-bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size, bloom_set_t *bloom_set)
+bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size, bloom_set_t * bloom_set)
 {
 	bloom_set->bloom_count = bloom_count;
 	bloom_set->bloom_size = bloom_size;
 
 	for (uint32_t i = 0; i < bloom_count; i++)
 	{
-		bloom_entry_t	   *bloom_entry = BLOOM_ENTRY_GET(bloom_set, i);
+		bloom_entry_t *bloom_entry = BLOOM_ENTRY_GET(bloom_set, i);
 
 		bloom_entry_init(bloom_size, bloom_entry);
 	}
@@ -31,13 +31,13 @@ bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size, bloom_set_
 
 /*
  * Finds the entry in bloom_set by given dbid.
- * That's a simple linear search, probably should be reworked (depends on target dbs count).
+ * That's a simple linear search, should be reworked (depends on target dbs count).
  */
 static bloom_entry_t *
 find_bloom_entry(bloom_set_t * bloom_set, Oid dbid)
 {
 	bloom_entry_t *bloom_entry;
-	int i = 0;
+	int			i = 0;
 
 	for (i = 0; i < bloom_set->bloom_count; i++)
 	{
@@ -78,11 +78,15 @@ bloom_set_bind(bloom_set_t * bloom_set, Oid dbid)
 	return true;
 }
 
+/*
+ * Fill the Bloom filter with 0 or 1. Used for setting
+ * full snapshots.
+ */
 bool
 bloom_set_trigger_bits(bloom_set_t * bloom_set, Oid dbid, bool on)
 {
 	bloom_entry_t *bloom_entry;
-	LWLock *entry_lock;
+	LWLock	   *entry_lock;
 
 	LWLockAcquire(bloom_set_lock, LW_SHARED);
 	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
@@ -132,7 +136,7 @@ void
 bloom_set_set(bloom_set_t * bloom_s, Oid dbid, Oid relNode)
 {
 	bloom_entry_t *bloom_entry;
-	LWLock *entry_lock;
+	LWLock	   *entry_lock;
 
 	LWLockAcquire(bloom_set_lock, LW_SHARED);
 	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
@@ -148,10 +152,10 @@ bloom_set_set(bloom_set_t * bloom_s, Oid dbid, Oid relNode)
 
 /* Find bloom by dbid, copy all bytes to new filter, clear old (but keep it) */
 bool
-bloom_set_move(bloom_set_t * bloom_set, Oid dbid, bloom_t *dest)
+bloom_set_move(bloom_set_t * bloom_set, Oid dbid, bloom_t * dest)
 {
 	bloom_entry_t *bloom_entry;
-	LWLock *entry_lock;
+	LWLock	   *entry_lock;
 
 	LWLockAcquire(bloom_set_lock, LW_SHARED);
 	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
@@ -177,7 +181,7 @@ bool
 bloom_set_merge(bloom_set_t * bloom_set, Oid dbid, bloom_t * m_bloom)
 {
 	bloom_entry_t *bloom_entry;
-	LWLock *entry_lock;
+	LWLock	   *entry_lock;
 
 	if (!m_bloom || !bloom_set)
 		return false;
@@ -194,7 +198,7 @@ bloom_set_merge(bloom_set_t * bloom_set, Oid dbid, bloom_t * m_bloom)
 		return true;
 	}
 	if (entry_lock)
-			LWLockRelease(entry_lock);
+		LWLockRelease(entry_lock);
 	LWLockRelease(bloom_set_lock);
 
 	return false;
@@ -205,7 +209,7 @@ bloom_set_is_all_bits_triggered(bloom_set_t * bloom_set, Oid dbid)
 {
 	bloom_entry_t *bloom_entry;
 	bool		is_triggered = false;
-	LWLock *entry_lock;
+	LWLock	   *entry_lock;
 
 	LWLockAcquire(bloom_set_lock, LW_SHARED);
 	entry_lock = LWLockAcquireEntry(dbid, LW_SHARED);
@@ -224,7 +228,7 @@ bloom_set_is_all_bits_triggered(bloom_set_t * bloom_set, Oid dbid)
 int
 bloom_set_count(bloom_set_t * bloom_set)
 {
-	int count = 0;
+	int			count = 0;
 	bloom_entry_t *bloom_entry;
 
 	LWLockAcquire(bloom_set_lock, LW_EXCLUSIVE);

@@ -17,6 +17,10 @@ char	   *tracked_rel_storages = DEFAULT_TRACKED_REL_STORAGES;
 char	   *tracked_rel_kinds = DEFAULT_TRACKED_REL_KINDS;
 int			tracking_worker_naptime_sec = DEFAULT_NAPTIME_SEC;
 
+/*
+ * Variables controlling GUC setting. Only extension functions are allowed
+ * to set GUC during NormalProcessing mode.
+ */
 static bool is_tracked_unlocked = false;
 static bool is_get_full_snapshot_on_recovery_unlocked = false;
 static bool is_schemas_unlocked = false;
@@ -81,7 +85,8 @@ check_guc(bool *toolkit_guc, GucSource source, bool *manual)
 static bool
 check_tracked(bool *newval, void **extra, GucSource source)
 {
-	bool manual = false;
+	bool		manual = false;
+
 	if (check_guc(&is_tracked_unlocked, source, &manual))
 		return true;
 
@@ -96,7 +101,8 @@ check_tracked(bool *newval, void **extra, GucSource source)
 static bool
 check_get_full_snapshot_on_recovery(bool *newval, void **extra, GucSource source)
 {
-	bool manual = false;
+	bool		manual = false;
+
 	if (check_guc(&is_get_full_snapshot_on_recovery_unlocked, source, &manual))
 		return true;
 
@@ -111,7 +117,8 @@ check_get_full_snapshot_on_recovery(bool *newval, void **extra, GucSource source
 static bool
 check_relkinds(char **newval, void **extra, GucSource source)
 {
-	bool manual = false;
+	bool		manual = false;
+
 	if (check_guc(&is_relkinds_unlocked, source, &manual))
 		return true;
 
@@ -126,7 +133,8 @@ check_relkinds(char **newval, void **extra, GucSource source)
 static bool
 check_schemas(char **newval, void **extra, GucSource source)
 {
-	bool manual = false;
+	bool		manual = false;
+
 	if (check_guc(&is_schemas_unlocked, source, &manual))
 		return true;
 
@@ -141,7 +149,8 @@ check_schemas(char **newval, void **extra, GucSource source)
 static bool
 check_relstorages(char **newval, void **extra, GucSource source)
 {
-	bool manual = false;
+	bool		manual = false;
+
 	if (check_guc(&is_relstorages_unlocked, source, &manual))
 		return true;
 

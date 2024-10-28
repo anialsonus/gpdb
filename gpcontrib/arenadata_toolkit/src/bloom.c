@@ -15,13 +15,25 @@ mod_m(uint32 val, uint64 m)
 }
 
 /*
- * Generate k positions in bloom filter for relfilenode oid.
+ * Generate k independent bit positions in a Bloom filter.
  *
- * The enhanced double hashing is used (Dillinger P, Manolios P. Bloom Filters
- * in Probabilistic Verification. 2004.) to produce k positions from 2 independent
- * hashes.
+ * Implements Enhanced Double Hashing technique (Dillinger & Manolios, 2004) which
+ * generates k hash values using only 2 independent hash functions. This approach
+ * provides comparable performance to using k independent hash functions while
+ * being more computationally efficient.
  *
- * out_hashes is out parameter which is filled with k bit indices.
+ * Algorithm:
+ * 1. Generate two independent 32-bit hashes (x, y) from a 64-bit wyhash
+ * 2. Apply modulo operation to fit within filter size
+ * 3. Generate subsequent indices using linear combination: x = (x + y) mod m
+ *														  y = (y + i) mod m
+ *
+ * Parameters:
+ * node		   - relation file node OID to hash
+ * bloom_size  - size of Bloom filter in bytes
+ * out_hashes  - output array to store k bit positions
+ *
+ * Reference: GPDB7 codebase.
  */
 static void
 tracking_hashes(Oid node, uint32 bloom_size, uint32 *out_hashes)
@@ -52,6 +64,15 @@ tracking_hashes(Oid node, uint32 bloom_size, uint32 *out_hashes)
 	}
 }
 
+/*
+* Test membership of an element in Bloom filter
+*
+* Implements standard Bloom filter membership test by checking k different bit
+* positions. The function provides probabilistic set membership with controllable
+* false positive rate.
+*
+* Returns true if element might be in set, false if definitely not in set.
+*/
 bool
 bloom_isset(bloom_t * bloom, Oid relnode)
 {
@@ -70,6 +91,17 @@ bloom_isset(bloom_t * bloom, Oid relnode)
 	return true;
 }
 
+/*
+ * Insert an element into Bloom filter
+ *
+ * Sets k bits in the Bloom filter's bit array corresponding to the k hash
+ * values generated for the input element. This operation is irreversible -
+ * elements cannot be removed without rebuilding the entire filter.
+ *
+ * Parameters:
+ * bloom	- pointer to Bloom filter structure
+ * relnode	- relation file node OID to insert
+ */
 void
 bloom_set(bloom_t * bloom, Oid relnode)
 {
@@ -83,7 +115,7 @@ bloom_set(bloom_t * bloom, Oid relnode)
 }
 
 void
-bloom_init(const uint32 bloom_size, bloom_t *bloom)
+bloom_init(const uint32 bloom_size, bloom_t * bloom)
 {
 	bloom->size = bloom_size;
 	bloom_clear(bloom);
@@ -113,7 +145,7 @@ bloom_merge(bloom_t * dst, bloom_t * src)
 }
 
 void
-bloom_copy(bloom_t * src, bloom_t *dest)
+bloom_copy(bloom_t * src, bloom_t * dest)
 {
 	dest->size = src->size;
 	memcpy(dest->map, src->map, src->size);

@@ -49,32 +49,38 @@ PG_FUNCTION_INFO_V1(tracking_get_track_main);
 
 typedef struct
 {
-	Relation	pg_class_rel; /*pg_class relation*/
+	Relation	pg_class_rel;	/* pg_class relation */
 	SysScanDesc scan;
 }	tf_main_func_state_t;
 
+/*
+ * Main state during tracking_get_track call. Stores
+ * copy of shared Bloom and tracking filtering parameters.
+ */
 typedef struct
 {
-	bloom_t    *bloom; /* local copy of shared bloom */
-	bloom_t    *rollback_bloom; /* bloom for rollback in case of sequential track acquisition*/
-	List	   *drops; /* drop list for current db */
+	bloom_t    *bloom;			/* local copy of shared bloom */
+	bloom_t    *rollback_bloom; /* bloom for rollback in case of sequential
+								 * track acquisition */
+	List	   *drops;			/* drop list for current db */
 	ListCell   *next_drop;
-	uint64	   relkinds; /* tracking relkinds */
-	uint64	   relstorages; /* tracking relstorages */
-	List	   *schema_oids; /*tracking schemas */
+	uint64		relkinds;		/* tracking relkinds */
+	uint64		relstorages;	/* tracking relstorages */
+	List	   *schema_oids;	/* tracking schemas */
 }	tf_get_global_state_t;
 
 typedef struct
 {
-	CdbPgResults cdb_results; /*results of CdbDispatch*/
+	CdbPgResults cdb_results;	/* results of CdbDispatch */
 	int			current_result;
 	int			current_row;
 
-	SPITupleTable *entry_result; /*results from SPI queries */
+	SPITupleTable *entry_result;	/* results from SPI queries */
 	uint64		entry_processed;
 	int			entry_current_row;
 
-	FmgrInfo   *inputFuncInfos; /* FuncInfos for string to Datum values transformation */
+	FmgrInfo   *inputFuncInfos; /* FuncInfos for parse string to Datum values
+								 * transformation */
 	Oid		   *typIOParams;
 }	tf_get_func_state_t;
 
@@ -90,7 +96,6 @@ tf_check_shmem_error(void)
 }
 
 /*
- * If get function complete with commit, just free resources;
  * In case of abort bloom is merged back as well as drops track.
  */
 static void
@@ -150,12 +155,16 @@ split_string_to_list(const char *input)
 	return result;
 }
 
+/*
+ * Tracked relkinds and relstorage types
+ * are coded into 64 bits via ascii offtests.
+ */
 static uint64
 list_to_bits(const char *input)
 {
 	char	   *input_copy;
 	char	   *token;
-	uint64	bits = 0;
+	uint64		bits = 0;
 
 	if (input == NULL)
 		return 0;
@@ -168,7 +177,7 @@ list_to_bits(const char *input)
 	{
 		if (*token != '\0')
 		{
-			char c = *token;
+			char		c = *token;
 
 			if (c >= 'a' && c <= 'z')
 				bits |= (1UL << (c - 'a'));
@@ -265,7 +274,7 @@ get_filters_from_guc()
 	foreach(lc, schema_names)
 	{
 		Oid			nspOid;
-		char	   *name = (char *)lfirst(lc);
+		char	   *name = (char *) lfirst(lc);
 
 		nspOid = GetSysCacheOid1(NAMESPACENAME, CStringGetDatum(name));
 
@@ -346,8 +355,8 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 				ereport(ERROR,
 						(errcode(ERRCODE_GP_COMMAND_ERROR),
 						 errmsg("database %u is not tracked", MyDatabaseId),
-						 errhint("Call 'arenadata_toolkit.tracking_register_db()'"
-							 "to enable tracking")));
+					errhint("Call 'arenadata_toolkit.tracking_register_db()'"
+							"to enable tracking")));
 		}
 		else
 		{
@@ -367,8 +376,8 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 				ereport(ERROR,
 						(errcode(ERRCODE_GP_COMMAND_ERROR),
 						 errmsg("database %u is not tracked", MyDatabaseId),
-						 errhint("Call 'arenadata_toolkit.tracking_register_db()'"
-							 "to enable tracking")));
+					errhint("Call 'arenadata_toolkit.tracking_register_db()'"
+							"to enable tracking")));
 		}
 		/* initial snapshot shouldn't return drops */
 		if (tf_get_global_state.bloom && !tf_get_global_state.bloom->is_set_all)
@@ -394,19 +403,19 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
 		funcctx->tuple_desc = CreateTemplateTupleDesc(GET_TRACK_TUPDESC_LEN, false);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "relid", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)2, "name", NAMEOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)3, "relfilenode", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)4, "size", INT8OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)5, "state", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)6, "gp_segment_id", INT4OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)7, "relnamespace", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)8, "relkind", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)9, "relstorage", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 1, "relid", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 2, "name", NAMEOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 3, "relfilenode", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 4, "size", INT8OID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 5, "state", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 6, "gp_segment_id", INT4OID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 7, "relnamespace", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 8, "relkind", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 9, "relstorage", CHAROID, -1, 0);
 		funcctx->tuple_desc = BlessTupleDesc(funcctx->tuple_desc);
 
 		state = (tf_main_func_state_t *) palloc0(sizeof(tf_main_func_state_t));
-		funcctx->user_fctx = (void *)state;
+		funcctx->user_fctx = (void *) state;
 
 		if (tf_get_global_state.bloom)
 		{
@@ -428,7 +437,7 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		char		relstorage;
 		HeapTuple	pg_class_tuple;
 		Form_pg_class relp;
-		int64 size;
+		int64		size;
 
 		if (!state->scan)
 			break;
@@ -552,7 +561,7 @@ tracking_get_track(PG_FUNCTION_ARGS)
 		MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
 		state = (tf_get_func_state_t *) palloc0(sizeof(tf_get_func_state_t));
-		funcctx->user_fctx = (void *)state;
+		funcctx->user_fctx = (void *) state;
 
 		state->entry_result = SPI_tuptable;
 		state->entry_processed = SPI_processed;
@@ -565,23 +574,23 @@ tracking_get_track(PG_FUNCTION_ARGS)
 		state->current_row = 0;
 
 		funcctx->tuple_desc = CreateTemplateTupleDesc(9, false);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "relid", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)2, "name", NAMEOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)3, "relfilenode", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)4, "size", INT8OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)5, "state", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)6, "gp_segment_id", INT4OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)7, "relnamespace", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)8, "relkind", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)9, "relstorage", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 1, "relid", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 2, "name", NAMEOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 3, "relfilenode", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 4, "size", INT8OID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 5, "state", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 6, "gp_segment_id", INT4OID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 7, "relnamespace", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 8, "relkind", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 9, "relstorage", CHAROID, -1, 0);
 		funcctx->tuple_desc = BlessTupleDesc(funcctx->tuple_desc);
 
 		if (state->cdb_results.numResults > 0)
 		{
 			int			natts = funcctx->tuple_desc->natts;
 
-			state->inputFuncInfos = (FmgrInfo *)palloc0(natts * sizeof(FmgrInfo));
-			state->typIOParams = (Oid *)palloc0(natts * sizeof(Oid));
+			state->inputFuncInfos = (FmgrInfo *) palloc0(natts * sizeof(FmgrInfo));
+			state->typIOParams = (Oid *) palloc0(natts * sizeof(Oid));
 			for (int i = 0; i < natts; i++)
 			{
 				Oid			type = TupleDescAttr(funcctx->tuple_desc, i)->atttypid;
@@ -629,7 +638,7 @@ tracking_get_track(PG_FUNCTION_ARGS)
 				{
 					if (PQgetisnull(pgresult, state->current_row, col))
 					{
-						values[col] = (Datum)0;
+						values[col] = (Datum) 0;
 						nulls[col] = true;
 					}
 					else
@@ -671,7 +680,7 @@ track_db(Oid dbid, bool reg)
 
 		if (stmt.dbname == NULL)
 			ereport(ERROR,
-					(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+			(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
 		stmt.setstmt = &v_stmt;
 
@@ -713,8 +722,8 @@ tracking_register_db_main(PG_FUNCTION_ARGS)
 static bool
 is_initialized()
 {
-	CdbPgResults 	cdb_pgresults = {NULL, 0};
-	bool all_inited = true;
+	CdbPgResults cdb_pgresults = {NULL, 0};
+	bool		all_inited = true;
 
 	CdbDispatchCommand("select * from arenadata_toolkit.tracking_is_segment_initialized()", 0, &cdb_pgresults);
 
@@ -737,7 +746,7 @@ is_initialized()
 			is_initialized = strcmp(PQgetvalue(pgresult, 0, 1), "t") == 0;
 
 			elog(LOG, "[arenadata_toolkit] tracking_register_db initialization check"
-					" segindex: %d, is_initialized: %d", segindex, is_initialized);
+			  " segindex: %d, is_initialized: %d", segindex, is_initialized);
 
 			if (!is_initialized)
 			{
@@ -776,7 +785,7 @@ tracking_register_db(PG_FUNCTION_ARGS)
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
-		char	*cmd =
+		char	   *cmd =
 		psprintf("select arenadata_toolkit.tracking_register_db_main(true, %u)", dbid);
 
 		CdbDispatchCommand(cmd, 0, NULL);
@@ -809,7 +818,7 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
-		char	*cmd =
+		char	   *cmd =
 		psprintf("select arenadata_toolkit.tracking_register_db_main(false, %u)", dbid);
 
 		CdbDispatchCommand(cmd, 0, NULL);
@@ -844,7 +853,7 @@ tracking_set_snapshot_on_recovery(PG_FUNCTION_ARGS)
 
 		if (stmt.dbname == NULL)
 			ereport(ERROR,
-					(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+			(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
 		v_stmt.type = T_VariableSetStmt;
 		v_stmt.kind = VAR_SET_VALUE;
@@ -991,7 +1000,7 @@ track_schema(const char *schemaName, Oid dbid, bool reg)
 
 	if (stmt.dbname == NULL)
 		ereport(ERROR,
-				(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+		   (errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
 	stmt.setstmt = &v_stmt;
 
@@ -1124,11 +1133,11 @@ tracking_set_relkinds(PG_FUNCTION_ARGS)
 					 errmsg("Invalid relkind: %s", token),
 					 errhint("Valid relkinds are: 'r', 'i', 'S', 't', 'v', 'c', 'f', 'u', 'm', 'o', 'b', 'M'")));
 
-		if (!seen_relkinds[(unsigned char)token[0]])
+		if (!seen_relkinds[(unsigned char) token[0]])
 		{
 			appendStringInfoChar(&buf, token[0]);
 			appendStringInfoChar(&buf, ',');
-			seen_relkinds[(unsigned char)token[0]] = true;
+			seen_relkinds[(unsigned char) token[0]] = true;
 		}
 		token = strtok(NULL, ",");
 	}
@@ -1140,7 +1149,7 @@ tracking_set_relkinds(PG_FUNCTION_ARGS)
 
 	if (stmt.dbname == NULL)
 		ereport(ERROR,
-				(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+		   (errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
 	v_stmt.type = T_VariableSetStmt;
 	v_stmt.name = "arenadata_toolkit.tracking_relkinds";
@@ -1222,11 +1231,11 @@ tracking_set_relstorages(PG_FUNCTION_ARGS)
 					 errmsg("Invalid relstorage type: %s", token),
 			errhint("Valid relstorages are: 'h', 'x', 'a', 'v', 'c', 'f'")));
 
-		if (!seen_relstorages[(unsigned char)token[0]])
+		if (!seen_relstorages[(unsigned char) token[0]])
 		{
 			appendStringInfoChar(&buf, token[0]);
 			appendStringInfoChar(&buf, ',');
-			seen_relstorages[(unsigned char)token[0]] = true;
+			seen_relstorages[(unsigned char) token[0]] = true;
 		}
 		token = strtok(NULL, ",");
 	}
@@ -1237,7 +1246,7 @@ tracking_set_relstorages(PG_FUNCTION_ARGS)
 
 	if (stmt.dbname == NULL)
 		ereport(ERROR,
-				(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+		   (errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
 	stmt.setstmt = &v_stmt;
 
@@ -1289,7 +1298,7 @@ tracking_trigger_initial_snapshot(PG_FUNCTION_ARGS)
 
 	if (!bloom_set_trigger_bits(&tf_shared_state->bloom_set, dbid, true))
 		ereport(ERROR,
-				(errmsg("Failed to find corresponding filter to database %u", dbid)));
+		(errmsg("Failed to find corresponding filter to database %u", dbid)));
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
@@ -1325,12 +1334,12 @@ tracking_is_segment_initialized(PG_FUNCTION_ARGS)
 	TupleDesc	tupdesc;
 	HeapTuple	tuple;
 	Datum		values[2];
-	bool nulls[2] = {false, false};
+	bool		nulls[2] = {false, false};
 	Datum		result;
 
 	tf_check_shmem_error();
 
-	rsi = (ReturnSetInfo *)fcinfo->resultinfo;
+	rsi = (ReturnSetInfo *) fcinfo->resultinfo;
 	tupdesc = rsi->expectedDesc;
 
 	/* Populate an output tuple. */

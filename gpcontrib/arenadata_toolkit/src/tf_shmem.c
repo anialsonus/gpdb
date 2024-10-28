@@ -51,13 +51,29 @@ my_bloom_power(uint64 target_bitset_bits)
 }
 
 /*
- * In order to decrease false positive ratio and make
- * Bloom filter close to theoretical form the calculation
- * of k hashes is suggested. The value k is estimated
- * as optimal value minimizing fp ratio. The bloom_size
- * is also adjusted to power of 2.
- * Additionally, the seed for hash calculation is initialized
- * here.
+ * Initialize optimal Bloom filter parameters
+ *
+ * This function calculates and sets optimal parameters for the Bloom filter
+ * based on established widespread principles.
+ *
+ * Adjusts the filter size to the nearest power of 2 to optimize memory alignment
+ * and access patterns and simplify modulo operations in hash calculations.
+ *
+ * Calculates the optimal number of hash functions using the formula:
+ * k = (m/n)ln(2), which minimizes the false positive probability
+ * p = (1 - e^(-kn/m))^k.
+ * where:
+ * - m = total_bits (size of bit array)
+ * - n = TOTAL_ELEMENTS (expected number of insertions)
+ *
+ * Initializes bloom_hash_seed with a random value to prevent deterministic hash collisions
+ * and ensure independent hash distributions across runs
+ *
+ * Note: The actual false positive rate might slightly deviate from theoretical
+ * optimum due to:
+ * - Rounding of k to integer values
+ * - Size adjustment to power of 2
+ * - Non-perfect independence of double hashing (see bloom.c)
  */
 static void
 init_bloom_invariants()

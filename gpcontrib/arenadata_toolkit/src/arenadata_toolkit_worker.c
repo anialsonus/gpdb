@@ -36,7 +36,7 @@ typedef struct
 static volatile sig_atomic_t got_sighup = false;
 static volatile sig_atomic_t got_sigterm = false;
 
-void arenadata_toolkit_main(Datum);
+void		arenadata_toolkit_main(Datum);
 
 /*
  * Signal handler for SIGTERM
@@ -72,24 +72,24 @@ tracking_sighup(SIGNAL_ARGS)
 	errno = save_errno;
 }
 
-static List*
+static List *
 get_tracked_dbs()
 {
 	StringInfoData query;
-	List		*tracked_dbs = NIL;
+	List	   *tracked_dbs = NIL;
 	tracked_db_t *trackedDb;
 	MemoryContext topcontext = CurrentMemoryContext;
 
 	initStringInfo(&query);
 	appendStringInfo(&query, SQL(
-			WITH _ AS (
-					WITH _ AS (
-							SELECT "setdatabase", regexp_split_to_array(UNNEST("setconfig"), '=') AS "setconfig" FROM "pg_db_role_setting" WHERE "setrole"=0
-			) SELECT "setdatabase", json_object(array_agg("setconfig"[1]), array_agg("setconfig"[2])) AS "setconfig" FROM _ GROUP BY 1
-			)  select "setdatabase",
-			("setconfig"->>'arenadata_toolkit.tracking_snapshot_on_recovery')::bool as "snapshot" FROM _ WHERE
-			("setconfig"->>'arenadata_toolkit.tracking_is_db_tracked')::bool IS TRUE
-	));
+								 WITH _ AS(
+										   WITH _ AS(
+													 SELECT "setdatabase", regexp_split_to_array(UNNEST("setconfig"), '=') AS "setconfig" FROM "pg_db_role_setting" WHERE "setrole" = 0
+													 ) SELECT "setdatabase", json_object(array_agg("setconfig"[1]), array_agg("setconfig"[2])) AS "setconfig" FROM _ GROUP BY 1
+										   ) select "setdatabase",
+("setconfig"->> 'arenadata_toolkit.tracking_snapshot_on_recovery'): :bool as "snapshot" FROM _ WHERE
+("setconfig"->> 'arenadata_toolkit.tracking_is_db_tracked'): :bool IS TRUE
+								 ));
 
 	if (SPI_connect() != SPI_OK_CONNECT)
 		ereport(ERROR, (errmsg("SPI_connect failed")));
@@ -101,11 +101,11 @@ get_tracked_dbs()
 
 	for (uint64 row = 0; row < SPI_processed; row++)
 	{
-		HeapTuple val = SPI_tuptable->vals[row];
-		TupleDesc tupdesc = SPI_tuptable->tupdesc;
-		bool isnull = false;
-		Oid dbid = DatumGetObjectId(SPI_getbinval(val, tupdesc, SPI_fnumber(tupdesc, "setdatabase"), &isnull));
-		bool get_snapshot_on_recovery = DatumGetBool(SPI_getbinval(val, tupdesc, SPI_fnumber(tupdesc, "snapshot"), &isnull));
+		HeapTuple	val = SPI_tuptable->vals[row];
+		TupleDesc	tupdesc = SPI_tuptable->tupdesc;
+		bool		isnull = false;
+		Oid			dbid = DatumGetObjectId(SPI_getbinval(val, tupdesc, SPI_fnumber(tupdesc, "setdatabase"), &isnull));
+		bool		get_snapshot_on_recovery = DatumGetBool(SPI_getbinval(val, tupdesc, SPI_fnumber(tupdesc, "snapshot"), &isnull));
 
 		if (isnull)
 			get_snapshot_on_recovery = get_full_snapshot_on_recovery;
@@ -139,7 +139,7 @@ track_dbs(List *tracked_dbs)
 
 		bloom_set_bind(&tf_shared_state->bloom_set, trackedDb->dbid);
 		bloom_set_trigger_bits(&tf_shared_state->bloom_set, trackedDb->dbid,
-								   trackedDb->get_full_snapshot_on_recovery);
+							   trackedDb->get_full_snapshot_on_recovery);
 	}
 }
 
@@ -160,28 +160,19 @@ worker_tracking_status_check()
 		pg_atomic_test_set_flag(&tf_shared_state->tracking_is_initialized);
 	}
 
-	/*
-	 * Here is quite a dump check, which imitates consistency validation.
-	 * Written as an example of segment erroneous tracking status.
-	 */
-	if (list_length(tracked_dbs) != bloom_set_count(&tf_shared_state->bloom_set))
-	{
-		if (pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
-			pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
-	}
-
 	if (tracked_dbs)
 		list_free_deep(tracked_dbs);
 	CommitTransactionCommand();
 }
 
-/* scan pg_db_role_setting, find all databases, bind blooms if necessary */
+/* Main worker cycle. Scans pg_db_role_setting and binds tracked dbids to
+ * corresponding Bloom filter. Lives on segments. */
 void
 arenadata_toolkit_main(Datum main_arg)
 {
-	instr_time current_time_timeout;
-	instr_time start_time_timeout;
-	long current_timeout = -1;
+	instr_time	current_time_timeout;
+	instr_time	start_time_timeout;
+	long		current_timeout = -1;
 
 	elog(LOG, "[arenadata toolkit] Starting background worker");
 
@@ -189,7 +180,7 @@ arenadata_toolkit_main(Datum main_arg)
 	 * The worker shouldn't exist when the master boots in utility mode.
 	 * Otherwise BackgroundWorkerInitializeConnection will explode with FATAL.
 	 */
-	if(IS_QUERY_DISPATCHER() && Gp_role != GP_ROLE_DISPATCH)
+	if (IS_QUERY_DISPATCHER() && Gp_role != GP_ROLE_DISPATCH)
 	{
 		proc_exit(0);
 	}
@@ -213,7 +204,7 @@ arenadata_toolkit_main(Datum main_arg)
 	while (!got_sigterm)
 	{
 		int			rc;
-		long timeout = tracking_worker_naptime_sec * 1000;
+		long		timeout = tracking_worker_naptime_sec * 1000;
 
 		if (current_timeout <= 0)
 		{
@@ -224,7 +215,7 @@ arenadata_toolkit_main(Datum main_arg)
 		}
 
 		rc = WaitLatch(&MyProc->procLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
-				current_timeout);
+					   current_timeout);
 
 		if (rc & WL_LATCH_SET)
 		{
@@ -246,6 +237,10 @@ arenadata_toolkit_main(Datum main_arg)
 			ProcessConfigFile(PGC_SIGHUP);
 		}
 
+		/*
+		 * We can wake up during WaitLatch very often, thus, timeout is
+		 * calculated manually.
+		 */
 		INSTR_TIME_SET_CURRENT(current_time_timeout);
 		INSTR_TIME_SUBTRACT(current_time_timeout, start_time_timeout);
 		current_timeout = timeout - (long) INSTR_TIME_GET_MILLISEC(current_time_timeout);
