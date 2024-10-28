@@ -1,24 +1,30 @@
 /* gpcontrib/arenadata_toolkit/arenadata_toolkit--1.6--1.7.sql */
 
-CREATE FUNCTION arenadata_toolkit.tracking_register_db(dbid OID default 0)
+CREATE FUNCTION arenadata_toolkit.tracking_register_db(dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
-'tracking_register_db' LANGUAGE C;
+'tracking_register_db' LANGUAGE C EXECUTE ON MASTER;
 
 REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_register_db(dbid OID) FROM public;
 
-CREATE FUNCTION arenadata_toolkit.tracking_unregister_db(dbid OID default 0)
+CREATE FUNCTION arenadata_toolkit.tracking_register_db_main(reg BOOL, dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
-'tracking_unregister_db' LANGUAGE C;
+'tracking_register_db_main' LANGUAGE C;
+
+REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_register_db_main(reg BOOL, dbid OID) FROM public;
+
+CREATE FUNCTION arenadata_toolkit.tracking_unregister_db(dbid OID DEFAULT 0)
+returns BOOL AS '$libdir/arenadata_toolkit',
+'tracking_unregister_db' LANGUAGE C EXECUTE ON MASTER;
 
 REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_unregister_db(dbid OID) FROM public;
 
-CREATE FUNCTION arenadata_toolkit.tracking_register_schema(schemaname NAME, dbid OID default 0)
+CREATE FUNCTION arenadata_toolkit.tracking_register_schema(schemaname NAME, dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
 'tracking_register_schema' LANGUAGE C EXECUTE ON master;
 
 REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_register_schema(schema NAME, dbid OID) FROM public;
 
-CREATE FUNCTION arenadata_toolkit.tracking_unregister_schema(schema NAME, dbid OID default 0)
+CREATE FUNCTION arenadata_toolkit.tracking_unregister_schema(schema NAME, dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
 'tracking_unregister_schema' LANGUAGE C EXECUTE ON master;
 

@@ -139,7 +139,7 @@ track_dbs(List *tracked_dbs)
 
 		bloom_set_bind(&tf_shared_state->bloom_set, trackedDb->dbid);
 		bloom_set_trigger_bits(&tf_shared_state->bloom_set, trackedDb->dbid,
-							   trackedDb->get_full_snapshot_on_recovery);
+								   trackedDb->get_full_snapshot_on_recovery);
 	}
 }
 
@@ -152,9 +152,10 @@ worker_tracking_status_check()
 
 	tracked_dbs = get_tracked_dbs();
 
-	if (pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_is_initialized) && list_length(tracked_dbs) > 0)
+	if (pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_is_initialized))
 	{
-		track_dbs(tracked_dbs);
+		if (list_length(tracked_dbs) > 0)
+			track_dbs(tracked_dbs);
 
 		pg_atomic_test_set_flag(&tf_shared_state->tracking_is_initialized);
 	}
@@ -216,6 +217,8 @@ arenadata_toolkit_main(Datum main_arg)
 
 		if (current_timeout <= 0)
 		{
+			worker_tracking_status_check();
+
 			INSTR_TIME_SET_CURRENT(start_time_timeout);
 			current_timeout = timeout;
 		}
@@ -246,7 +249,6 @@ arenadata_toolkit_main(Datum main_arg)
 		INSTR_TIME_SET_CURRENT(current_time_timeout);
 		INSTR_TIME_SUBTRACT(current_time_timeout, start_time_timeout);
 		current_timeout = timeout - (long) INSTR_TIME_GET_MILLISEC(current_time_timeout);
-		if (current_timeout <= 0) worker_tracking_status_check();
 	}
 
 	if (got_sigterm)

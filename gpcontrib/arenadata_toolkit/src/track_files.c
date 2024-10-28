@@ -32,6 +32,7 @@
 #include "tf_shmem.h"
 
 PG_FUNCTION_INFO_V1(tracking_register_db);
+PG_FUNCTION_INFO_V1(tracking_register_db_main);
 PG_FUNCTION_INFO_V1(tracking_unregister_db);
 PG_FUNCTION_INFO_V1(tracking_set_snapshot_on_recovery);
 PG_FUNCTION_INFO_V1(tracking_register_schema);
@@ -441,16 +442,6 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 	funcctx = SRF_PERCALL_SETUP();
 	state = funcctx->user_fctx;
 
-	if (pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_is_initialized))
-	{
-		systable_endscan(state->scan);
-		heap_close(state->pg_class_rel, AccessShareLock);
-		state->scan = NULL;
-		state->pg_class_rel = NULL;
-		elog(LOG, "Nothing to return from segment %d due to uninitialized status of Bloom filter", GpIdentity.segindex);
-		SRF_RETURN_DONE(funcctx);
-	}
-
 	while (true)
 	{
 		Oid			filenode;
@@ -724,6 +715,66 @@ track_db(Oid dbid, bool reg)
 				(errmsg("[arenadata_toolkit] exceeded maximum number of tracked databases")));
 }
 
+Datum
+tracking_register_db_main(PG_FUNCTION_ARGS)
+{
+	Oid			dbid = PG_GETARG_OID(1);
+	bool		reg = PG_GETARG_BOOL(0);
+
+	tf_check_shmem_error();
+
+	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
+
+	elog(LOG, "[arenadata_toolkit] registering database %u for tracking", dbid);
+
+	track_db(dbid, reg);
+
+	PG_RETURN_BOOL(true);
+}
+
+static bool
+is_initialized()
+{
+	CdbPgResults 	cdb_pgresults = {NULL, 0};
+	bool all_inited = true;
+
+	CdbDispatchCommand("select * from arenadata_toolkit.tracking_is_segment_initialized()", 0, &cdb_pgresults);
+
+	for (int i = 0; i < cdb_pgresults.numResults; i++)
+	{
+		struct pg_result *pgresult = cdb_pgresults.pg_results[i];
+
+		if (PQresultStatus(pgresult) != PGRES_TUPLES_OK)
+		{
+			cdbdisp_clearCdbPgResults(&cdb_pgresults);
+			ereport(ERROR,
+					(errmsg("Failed to check segments status")));
+		}
+		else
+		{
+			int32		segindex = 0;
+			bool		is_initialized = false;
+
+			segindex = atoi(PQgetvalue(pgresult, 0, 0));
+			is_initialized = strcmp(PQgetvalue(pgresult, 0, 1), "t") == 0;
+
+			elog(LOG, "[arenadata_toolkit] tracking_register_db initialization check"
+					" segindex: %d, is_initialized: %d", segindex, is_initialized);
+
+			if (!is_initialized)
+			{
+				all_inited = false;
+				break;
+			}
+		}
+	}
+
+	if (cdb_pgresults.numResults > 0)
+		cdbdisp_clearCdbPgResults(&cdb_pgresults);
+
+	return all_inited;
+}
+
 /*
  * Registers current (if dbid is 0) or specific database as tracked by arenadata_toolkit tables tracking.
  * Dispatches call to segments by itself. Binds a bloom filter to the registered database if possible.
@@ -735,6 +786,11 @@ tracking_register_db(PG_FUNCTION_ARGS)
 
 	tf_check_shmem_error();
 
+	if (Gp_role == GP_ROLE_DISPATCH && !is_initialized())
+		ereport(ERROR,
+				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
+				 errhint("Wait arenadata_toolkit.tracking_worker_naptime_sec and try again")));
+
 	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 	elog(LOG, "[arenadata_toolkit] registering database %u for tracking", dbid);
 
@@ -742,10 +798,12 @@ tracking_register_db(PG_FUNCTION_ARGS)
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
-		char	   *cmd =
-		psprintf("select arenadata_toolkit.tracking_register_db(%u)", dbid);
+		char	*cmd =
+		psprintf("select arenadata_toolkit.tracking_register_db_main(true, %u)", dbid);
 
 		CdbDispatchCommand(cmd, 0, NULL);
+
+		pfree(cmd);
 	}
 
 	PG_RETURN_BOOL(true);
@@ -761,6 +819,11 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 
 	tf_check_shmem_error();
 
+	if (Gp_role == GP_ROLE_DISPATCH && !is_initialized())
+		ereport(ERROR,
+				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
+				 errhint("Wait arenadata_toolkit.tracking_worker_naptime_sec and try again")));
+
 	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 	elog(LOG, "[arenadata_toolkit] unregistering database %u from tracking", dbid);
 
@@ -768,10 +831,12 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
-		char	   *cmd =
-		psprintf("select arenadata_toolkit.tracking_unregister_db(%u)", dbid);
+		char	*cmd =
+		psprintf("select arenadata_toolkit.tracking_register_db_main(false, %u)", dbid);
 
 		CdbDispatchCommand(cmd, 0, NULL);
+
+		pfree(cmd);
 	}
 
 	PG_RETURN_BOOL(true);
@@ -780,7 +845,7 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 Datum
 tracking_set_snapshot_on_recovery(PG_FUNCTION_ARGS)
 {
-	bool		set = PG_GETARG_OID(0);
+	bool		set = PG_GETARG_BOOL(0);
 	Oid			dbid = PG_GETARG_OID(1);
 
 	tf_check_shmem_error();

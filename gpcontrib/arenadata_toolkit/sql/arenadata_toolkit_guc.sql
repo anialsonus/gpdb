@@ -62,14 +62,36 @@ CREATE DATABASE tracking4;
 CREATE DATABASE tracking5;
 CREATE DATABASE tracking6;
 
-SELECT arenadata_toolkit.tracking_register_db(oid) FROM pg_database WHERE datname IN
-('tracking1', 'tracking2', 'tracking3', 'tracking4', 'tracking5');
+DO $$
+DECLARE
+    db_oid oid;
+BEGIN
+    FOR db_oid IN 
+        SELECT oid 
+        FROM pg_database 
+        WHERE datname IN ('tracking1', 'tracking2', 'tracking3',
+        'tracking4', 'tracking5', 'tracking6')
+    LOOP
+        PERFORM arenadata_toolkit.tracking_register_db(db_oid);
+    END LOOP;
+END;
+$$;
 
-SELECT arenadata_toolkit.tracking_register_db(oid) FROM pg_database WHERE datname IN
-('tracking6');
 
-SELECT arenadata_toolkit.tracking_unregister_db(oid) FROM pg_database WHERE datname IN
-('tracking1', 'tracking2', 'tracking3', 'tracking4', 'tracking5', 'tracking6');
+DO $$
+DECLARE
+    db_oid oid;
+BEGIN
+    FOR db_oid IN 
+        SELECT oid 
+        FROM pg_database 
+        WHERE datname IN ('tracking1', 'tracking2', 'tracking3',
+        'tracking4', 'tracking5', 'tracking6')
+    LOOP
+        PERFORM arenadata_toolkit.tracking_unregister_db(db_oid);
+    END LOOP;
+END;
+$$;
 
 DROP DATABASE IF EXISTS tracking2;
 DROP DATABASE IF EXISTS tracking3;
