@@ -143,6 +143,7 @@
 #include "utils/lsyscache.h"
 #include "utils/pg_rusage.h"
 #include "cdb/cdbappendonlyblockdirectory.h"
+#include "cdb/appendonly_vacuum.h"
 
 
 static void vacuum_appendonly_index(Relation indexRelation,
@@ -163,6 +164,7 @@ static void ao_vacuum_rel_recycle_dead_segments(Relation onerel, VacuumParams *p
 												BufferAccessStrategy bstrategy, AOVacuumRelStats *vacrelstats);
 static AOVacuumRelStats *init_vacrelstats(void);
 static void cleanup_vacrelstats(AOVacuumRelStats **vacrelstatsp);
+static void scan_index(Relation indrel, Relation aorel, int elevel, BufferAccessStrategy vac_strategy);
 
 static void
 ao_vacuum_rel_pre_cleanup(Relation onerel, VacuumParams *params, BufferAccessStrategy bstrategy, AOVacuumRelStats *vacrelstats)
@@ -781,7 +783,7 @@ cleanup_vacrelstats(AOVacuumRelStats **vacrelstats)
  *
  * We use this when we have no deletions to do.
  */
-void
+static void
 scan_index(Relation indrel, Relation aorel, int elevel, BufferAccessStrategy vac_strategy)
 {
 	IndexBulkDeleteResult *stats;
