@@ -10,7 +10,6 @@
 
 static shmem_startup_hook_type next_shmem_startup_hook = NULL;
 tf_shared_state_t *tf_shared_state = NULL;
-LWLock *tf_state_lock;
 LWLock *bloom_set_lock;
 tf_entry_lock_t bloom_locks[MAX_DB_TRACK_COUNT];
 uint64 bloom_hash_seed;
@@ -22,7 +21,6 @@ int bloom_hash_num;
 static void
 init_lwlocks(void)
 {
-	tf_state_lock = LWLockAssign();
 	bloom_set_lock = LWLockAssign();
 
 	for (int i = 0; i < db_track_count; ++i)
@@ -122,17 +120,14 @@ tf_shmem_deinit(void)
 LWLock *
 LWLockAcquireEntry(Oid dbid, LWLockMode mode)
 {
-	LWLockAcquire(tf_state_lock, LW_SHARED);
 	for (int i = 0; i < db_track_count; ++i)
 	{
 		if (bloom_locks[i].dbid == dbid)
 		{
 			LWLockAcquire(bloom_locks[i].lock, mode);
-			LWLockRelease(tf_state_lock);
 			return bloom_locks[i].lock;
 		}
 	}
-	LWLockRelease(tf_state_lock);
 
 	return NULL;
 }
@@ -144,7 +139,7 @@ void
 LWLockBindEntry(Oid dbid)
 {
 	int i;
-	LWLockAcquire(tf_state_lock, LW_EXCLUSIVE);
+
 	for (i = 0; i < db_track_count; ++i)
 	{
 		if (bloom_locks[i].dbid == InvalidOid)
@@ -156,7 +151,6 @@ LWLockBindEntry(Oid dbid)
 
 	if (i == db_track_count && pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
 		pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
-	LWLockRelease(tf_state_lock);
 }
 
 /*
@@ -166,7 +160,7 @@ void
 LWLockUnbindEntry(Oid dbid)
 {
 	int i;
-	LWLockAcquire(tf_state_lock, LW_EXCLUSIVE);
+
 	for (i = 0; i < db_track_count; ++i)
 	{
 		if (bloom_locks[i].dbid == dbid)
@@ -178,6 +172,4 @@ LWLockUnbindEntry(Oid dbid)
 
 	if (i == db_track_count && pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
 		pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
-
-	LWLockRelease(tf_state_lock);
 }

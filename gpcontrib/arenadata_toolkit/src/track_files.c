@@ -47,14 +47,15 @@ PG_FUNCTION_INFO_V1(tracking_get_track_main);
 
 #define GET_TRACK_TUPDESC_LEN 9
 
+/* Preserved state among the calls of tracking_get_track_main */
 typedef struct
 {
 	Relation	pg_class_rel;	/* pg_class relation */
-	SysScanDesc scan;
+	SysScanDesc scan;	/* for scans of system table */
 }	tf_main_func_state_t;
 
 /*
- * Main state during tracking_get_track call. Stores
+ * Main state during tracking_get_track_main call. Stores
  * copy of shared Bloom and tracking filtering parameters.
  */
 typedef struct
@@ -75,12 +76,12 @@ typedef struct
 	int			current_result;
 	int			current_row;
 
-	SPITupleTable *entry_result;	/* results from SPI queries */
+	SPITupleTable *entry_result;	/* results from SPI queries*/
 	uint64		entry_processed;
 	int			entry_current_row;
 
 	FmgrInfo   *inputFuncInfos; /* FuncInfos for parse string to Datum values
-								 * transformation */
+								 * transformation when using CdbDispatch* */
 	Oid		   *typIOParams;
 }	tf_get_func_state_t;
 
@@ -157,7 +158,7 @@ split_string_to_list(const char *input)
 
 /*
  * Tracked relkinds and relstorage types
- * are coded into 64 bits via ascii offtests.
+ * are coded into 64 bits via ascii offsets.
  */
 static uint64
 list_to_bits(const char *input)
@@ -176,14 +177,7 @@ list_to_bits(const char *input)
 	while (token != NULL)
 	{
 		if (*token != '\0')
-		{
-			char		c = *token;
-
-			if (c >= 'a' && c <= 'z')
-				bits |= (1UL << (c - 'a'));
-			else
-				bits |= (1UL << (26 + (c - 'A')));
-		}
+			bits |= (1UL << (*token - 'A'));
 
 		token = strtok(NULL, ",");
 	}
@@ -314,10 +308,7 @@ schema_is_tracked(Oid schema)
 static bool
 kind_is_tracked(char type, uint64 allowed_kinds)
 {
-	if (type >= 'a' && type <= 'z')
-		return (allowed_kinds & (1UL << (type - 'a'))) != 0;
-	else
-		return (allowed_kinds & (1UL << (26 + (type - 'A')))) != 0;
+	return (allowed_kinds & (1UL << (type - 'A'))) != 0;
 }
 
 /*

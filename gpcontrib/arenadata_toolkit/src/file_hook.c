@@ -22,17 +22,17 @@ static file_extend_hook_type next_file_extend_hook = NULL;
 static file_truncate_hook_type next_file_truncate_hook = NULL;
 static file_unlink_hook_type next_file_unlink_hook = NULL;
 
-static bloom_t * non_committed_bloom = NULL;
+static bloom_t *non_committed_bloom = NULL;
 static Oid	non_committed_dbid = InvalidOid;
 
 static bool
-is_file_node_trackable(RelFileNodeBackend * rnode)
+is_file_node_trackable(RelFileNodeBackend *rnode)
 {
 	return !(rnode->node.dbNode == InvalidOid);
 }
 
 static void
-file_node_set(RelFileNodeBackend * rnode)
+file_node_set(RelFileNodeBackend *rnode)
 {
 	if (!is_file_node_trackable(rnode))
 		return;
@@ -40,7 +40,10 @@ file_node_set(RelFileNodeBackend * rnode)
 	bloom_set_set(&tf_shared_state->bloom_set, rnode->node.dbNode, rnode->node.relNode);
 }
 
-/* 'create' events stored in local bloom and merged only on commit, when changes are already in catalog */
+/*
+ * 'create' events stored in local bloom and merged only on commit, when
+ * changes are already in catalog.
+ */
 static void
 xact_end_create_callback(XactEvent event, void *arg)
 {
@@ -57,6 +60,10 @@ xact_end_create_callback(XactEvent event, void *arg)
 	non_committed_dbid = InvalidOid;
 }
 
+/*
+ * Since we can't be sure that created rnode will be commited, the create events
+ * are stored in a separate bloom filter.
+ */
 static void
 hook_create(RelFileNodeBackend rnode)
 {
@@ -76,7 +83,8 @@ hook_create(RelFileNodeBackend rnode)
 	}
 
 	elog(DEBUG1, "hook_create: %d %d %d %d",
-	rnode.backend, rnode.node.dbNode, rnode.node.spcNode, rnode.node.relNode);
+		 rnode.backend, rnode.node.dbNode,
+		 rnode.node.spcNode, rnode.node.relNode);
 
 	bloom_set(non_committed_bloom, rnode.node.relNode);
 
@@ -89,7 +97,8 @@ hook_extend(RelFileNodeBackend rnode)
 		next_file_extend_hook(rnode);
 
 	elog(DEBUG1, "hook_extend: %d %d %d %d",
-	rnode.backend, rnode.node.dbNode, rnode.node.spcNode, rnode.node.relNode);
+		 rnode.backend, rnode.node.dbNode,
+		 rnode.node.spcNode, rnode.node.relNode);
 
 	file_node_set(&rnode);
 }
@@ -101,7 +110,8 @@ hook_truncate(RelFileNodeBackend rnode)
 		next_file_truncate_hook(rnode);
 
 	elog(DEBUG1, "hook_truncate: %d %d %d %d",
-	rnode.backend, rnode.node.dbNode, rnode.node.spcNode, rnode.node.relNode);
+		 rnode.backend, rnode.node.dbNode,
+		 rnode.node.spcNode, rnode.node.relNode);
 
 	file_node_set(&rnode);
 }
@@ -113,7 +123,8 @@ hook_unlink(RelFileNodeBackend rnode)
 		next_file_unlink_hook(rnode);
 
 	elog(DEBUG1, "hook_unlink: %d %d %d %d",
-	rnode.backend, rnode.node.dbNode, rnode.node.spcNode, rnode.node.relNode);
+		 rnode.backend, rnode.node.dbNode,
+		 rnode.node.spcNode, rnode.node.relNode);
 
 	drops_track_add(rnode.node);
 }

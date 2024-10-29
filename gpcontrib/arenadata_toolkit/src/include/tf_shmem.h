@@ -36,7 +36,6 @@ typedef struct
 }	tf_entry_lock_t;
 
 extern tf_shared_state_t *tf_shared_state;
-extern LWLock *tf_state_lock;
 extern LWLock *bloom_set_lock;
 extern tf_entry_lock_t bloom_locks[];
 extern uint64 bloom_hash_seed;
