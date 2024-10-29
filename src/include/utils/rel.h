@@ -229,6 +229,7 @@ typedef struct StdRdOptions
 	AutoVacOpts autovacuum;		/* autovacuum-related options */
 
 	bool		analyze_hll_non_part_table; 		/* force hll statistics collection on relation */
+	bool		inherit_table_options; 		/* inherit table options */
 	bool		appendonly;		/* is this an appendonly relation? */
 	int			blocksize;		/* max varblock size (AO rels only) */
 	int			compresslevel;  /* compression level (AO rels only) */

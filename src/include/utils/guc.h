@@ -624,6 +624,7 @@ extern IndexCheckType gp_indexcheck_vacuum;
 /* Max number of chars needed to hold value of a storage option. */
 #define MAX_SOPT_VALUE_LEN 15
 #define SOPT_ANALYZEHLL    "analyze_hll_non_part_table"
+#define SOPT_INHERIT       "inherit"
 
 /*
  * Functions exported by guc.c

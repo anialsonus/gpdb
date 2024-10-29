@@ -897,21 +897,6 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId, char relstorage, boo
 					 errhint("Use OIDS=FALSE.")));
 	}
 
-	if (gp_add_partition_inherits_table_setting && stmt->is_add_part)
-	{
-		ListCell *lc;
-		foreach(lc, stmt->options)
-		{
-			DefElem *de = lfirst(lc);
-			if (pg_strcasecmp(de->defname, "appendonly") == 0)
-			{
-				if (pg_strcasecmp(defGetString(de), "none") != 0)
-					useChangedOpts = false;
-				break;
-			}
-		}
-	}
-
 	bool valid_opts = (relstorage == RELSTORAGE_EXTERNAL || !useChangedOpts);
 
 	/*

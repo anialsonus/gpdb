@@ -7140,7 +7140,14 @@ atpxPartAddList(Relation rel,
 			else if (IsA(q, CreateStmt))
 			{
 				/* propagate owner */
-				((CreateStmt *) q)->ownerid = ownerid;
+				CreateStmt *ct = (CreateStmt *)q;
+				ct->ownerid = ownerid;
+
+				if (gp_add_partition_inherits_table_setting && RelationIsAppendOptimized(rel))
+				{
+					if (!reloptions_has_opt(ct->options, "inherit"))
+						ct->options = lappend(ct->options, makeDefElem("inherit", (Node *) makeString("true")));
+				}
 			}
 
 			/*

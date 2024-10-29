@@ -1225,7 +1225,9 @@ default_reloptions(Datum reloptions, bool validate, relopt_kind kind)
 		{"user_catalog_table", RELOPT_TYPE_BOOL,
 		offsetof(StdRdOptions, user_catalog_table)},
 		{SOPT_ANALYZEHLL, RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, analyze_hll_non_part_table)}
+		offsetof(StdRdOptions, analyze_hll_non_part_table)},
+		{SOPT_INHERIT, RELOPT_TYPE_BOOL,
+		offsetof(StdRdOptions, inherit_table_options)}
 	};
 
 	options = parseRelOptions(reloptions, validate, kind, &numoptions);
