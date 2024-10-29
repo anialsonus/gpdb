@@ -55,6 +55,7 @@ PG_CXXFLAGS = \
 	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libnaucrates/include \
 	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libgpdbcost/include \
 
+SHLIB_LINK += -lxerces-c
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
