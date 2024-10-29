@@ -1220,7 +1220,7 @@ typedef union PGAlignedXLogBlock
 #else
 	/*
 	 * This is a fallback option for those compilers which don't support
-	 * "fallthru" attribute. If that's the case, then do nothing.
+	 * "fallthrough" attribute. If that's the case, then do nothing.
 	 */
 	#define fallthru do {} while (0)
 #endif
