@@ -853,7 +853,10 @@ RESET gp_add_column_inherits_table_setting;
 SET gp_add_partition_inherits_table_setting = on;
 CREATE TABLE aocs_alter_add_part(a int, b int, c int) WITH (appendonly=true, orientation=column, compresstype=rle_type, compresslevel=4, blocksize=65536) DISTRIBUTED BY (a)
     PARTITION BY RANGE (b)
-        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=column, compresstype=zstd, compresslevel=5, blocksize=32768))
+        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (
+            SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=column, compresstype=zstd, compresslevel=5, blocksize=32768),
+            SUBPARTITION "22" VALUES (4, 5, 6) WITH (appendonly=true, orientation=column)
+        )
     (PARTITION "10" START (0) INCLUSIVE END (10) EXCLUSIVE);
 SET gp_default_storage_options = 'appendonly=true, orientation=column, compresstype=zlib, compresslevel=2';
 -- use statement encoding
@@ -869,20 +872,28 @@ SELECT relname, reloptions FROM pg_class WHERE relname LIKE 'aocs_alter_add_part
  aocs_alter_add_part                   | {appendonly=true,orientation=column,compresstype=rle_type,compresslevel=4,blocksize=65536}
  aocs_alter_add_part_1_prt_10          | {appendonly=true,orientation=column,compresstype=rle_type,compresslevel=4,blocksize=65536}
  aocs_alter_add_part_1_prt_10_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_1_prt_10_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_1_prt_20          | {appendonly=true,orientation=column,compresstype=zlib,compresslevel=3,blocksize=16384}
  aocs_alter_add_part_1_prt_20_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_1_prt_20_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_1_prt_30          | {appendonly=true,orientation=column,compresstype=rle_type,compresslevel=4,blocksize=65536}
  aocs_alter_add_part_1_prt_30_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_1_prt_30_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_1_prt_40          | {appendonly=true,orientation=column,compresstype=rle_type,compresslevel=4,blocksize=65536}
  aocs_alter_add_part_1_prt_40_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_1_prt_40_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_1_prt_50          | {appendonly=true,orientation=column,compresstype=rle_type,compresslevel=4,blocksize=65536}
  aocs_alter_add_part_1_prt_50_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
-(11 rows)
+ aocs_alter_add_part_1_prt_50_2_prt_22 | {appendonly=true,orientation=column}
+(16 rows)
 
 DROP TABLE aocs_alter_add_part;
 CREATE TABLE aocs_alter_add_part_no_compress(a int, b int, c int) WITH (appendonly=true, orientation=column) DISTRIBUTED BY (a)
     PARTITION BY RANGE (b)
-        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=column, compresstype=zstd, compresslevel=5, blocksize=32768))
+        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (
+            SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=column, compresstype=zstd, compresslevel=5, blocksize=32768),
+            SUBPARTITION "22" VALUES (4, 5, 6) WITH (appendonly=true, orientation=column)
+        )
     (PARTITION "10" START (0) INCLUSIVE END (10) EXCLUSIVE);
 SET gp_default_storage_options ='appendonly=true, orientation=column, compresstype=zlib, compresslevel=2, blocksize=8192';
 -- use statement encoding
@@ -898,15 +909,20 @@ SELECT relname, reloptions FROM pg_class WHERE relname LIKE 'aocs_alter_add_part
  aocs_alter_add_part_no_compress                   | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_10          | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_10_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_no_compress_1_prt_10_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_20          | {appendonly=true,orientation=column,compresstype=rle_type,compresslevel=3,blocksize=16384}
  aocs_alter_add_part_no_compress_1_prt_20_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_no_compress_1_prt_20_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_30          | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_30_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_no_compress_1_prt_30_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_40          | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_40_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
+ aocs_alter_add_part_no_compress_1_prt_40_2_prt_22 | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_50          | {appendonly=true,orientation=column}
  aocs_alter_add_part_no_compress_1_prt_50_2_prt_11 | {appendonly=true,orientation=column,compresstype=zstd,compresslevel=5,blocksize=32768}
-(11 rows)
+ aocs_alter_add_part_no_compress_1_prt_50_2_prt_22 | {appendonly=true,orientation=column}
+(16 rows)
 
 DROP TABLE aocs_alter_add_part_no_compress;
 RESET gp_add_partition_inherits_table_setting;

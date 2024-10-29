@@ -453,7 +453,10 @@ SET gp_add_partition_inherits_table_setting = on;
 
 CREATE TABLE ao_alter_add_part(a int, b int, c int) WITH (appendonly=true, orientation=row, compresstype=zstd, compresslevel=4, blocksize=65536) DISTRIBUTED BY (a)
     PARTITION BY RANGE (b)
-        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=row, compresstype=zstd, compresslevel=5, blocksize=32768))
+        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (
+            SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=row, compresstype=zstd, compresslevel=5, blocksize=32768),
+            SUBPARTITION "22" VALUES (4, 5, 6) WITH (appendonly=true, orientation=row)
+        )
     (PARTITION "10" START (0) INCLUSIVE END (10) EXCLUSIVE);
 SET gp_default_storage_options = 'appendonly=true, orientation=row, compresstype=zlib, compresslevel=2';
 -- use statement encoding
@@ -468,7 +471,10 @@ DROP TABLE ao_alter_add_part;
 
 CREATE TABLE ao_alter_add_part_no_compress(a int, b int, c int) WITH (appendonly=true, orientation=row) DISTRIBUTED BY (a)
     PARTITION BY RANGE (b)
-        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=row, compresstype=zlib, compresslevel=5, blocksize=32768))
+        SUBPARTITION BY LIST (c) SUBPARTITION TEMPLATE (
+            SUBPARTITION "11" VALUES (1, 2, 3) WITH (appendonly=true, orientation=row, compresstype=zlib, compresslevel=5, blocksize=32768),
+            SUBPARTITION "22" VALUES (4, 5, 6) WITH (appendonly=true, orientation=row)
+        )
     (PARTITION "10" START (0) INCLUSIVE END (10) EXCLUSIVE);
 SET gp_default_storage_options ='appendonly=true, orientation=row, compresstype=zlib, compresslevel=2, blocksize=8192';
 -- use statement encoding
