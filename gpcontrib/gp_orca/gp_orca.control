@@ -3,4 +3,4 @@
 comment = 'make ORCA shared again'
 default_version = '1.0'
 module_pathname = '$libdir/gp_orca'
-relocatable = true
+relocatable = false
