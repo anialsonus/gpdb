@@ -9,7 +9,7 @@
 #include <math.h>
 
 static shmem_startup_hook_type next_shmem_startup_hook = NULL;
-tf_shared_state_t *tf_shared_state;
+tf_shared_state_t *tf_shared_state = NULL;
 LWLock *tf_state_lock;
 LWLock *bloom_set_lock;
 tf_entry_lock_t bloom_locks[MAX_DB_TRACK_COUNT];
@@ -33,31 +33,10 @@ init_lwlocks(void)
 }
 
 /*
- * Calculate the closes power of 2 for given
- * length.
- */
-static int
-my_bloom_power(uint64 target_bitset_bits)
-{
-	int			bloom_power = -1;
-
-	while (target_bitset_bits > 0 && bloom_power < 32)
-	{
-		bloom_power++;
-		target_bitset_bits >>= 1;
-	}
-
-	return bloom_power;
-}
-
-/*
  * Initialize optimal Bloom filter parameters
  *
  * This function calculates and sets optimal parameters for the Bloom filter
  * based on established widespread principles.
- *
- * Adjusts the filter size to the nearest power of 2 to optimize memory alignment
- * and access patterns and simplify modulo operations in hash calculations.
  *
  * Calculates the optimal number of hash functions using the formula:
  * k = (m/n)ln(2), which minimizes the false positive probability
@@ -66,25 +45,14 @@ my_bloom_power(uint64 target_bitset_bits)
  * - m = total_bits (size of bit array)
  * - n = TOTAL_ELEMENTS (expected number of insertions)
  *
- * Initializes bloom_hash_seed with a random value to prevent deterministic hash collisions
- * and ensure independent hash distributions across runs
- *
- * Note: The actual false positive rate might slightly deviate from theoretical
- * optimum due to:
- * - Rounding of k to integer values
- * - Size adjustment to power of 2
- * - Non-perfect independence of double hashing (see bloom.c)
+ * Initializes bloom_hash_seed with a random value to prevent deterministic
+ * hash collisions and ensure independent hash distributions across runs.
  */
 static void
 init_bloom_invariants()
 {
-	uint64 total_bits;
-	int k;
+	int k = rint(log(2.0) * (bloom_size * 8) / TOTAL_ELEMENTS);
 
-	total_bits = UINT64CONST(1) << my_bloom_power(bloom_size * 8);
-	bloom_size = total_bits / 8;
-
-	k = rint(log(2.0) * total_bits / TOTAL_ELEMENTS);
 	bloom_hash_num = Max(1, Min(k, MAX_BLOOM_HASH_FUNCS));
 	bloom_hash_seed = (uint64) random();
 }
