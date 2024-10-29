@@ -903,8 +903,12 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId, char relstorage, boo
 		foreach(lc, stmt->options)
 		{
 			DefElem *de = lfirst(lc);
-			if (pg_strcasecmp(de->defname, "appendonly") == 0 && pg_strcasecmp(defGetString(de), "none") != 0)
-				useChangedOpts = false;
+			if (pg_strcasecmp(de->defname, "appendonly") == 0)
+			{
+				if (pg_strcasecmp(defGetString(de), "none") != 0)
+					useChangedOpts = false;
+				break;
+			}
 		}
 	}
 
