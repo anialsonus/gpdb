@@ -1181,8 +1181,6 @@ validate_and_refill_options(StdRdOptions *result, relopt_value *options,
 			result->columnstore = ao_storage_opts.columnstore;
 		if (!(get_option_set(options, numrelopts, SOPT_ANALYZEHLL)))
 			result->analyze_hll_non_part_table = ao_storage_opts.analyze_hll_non_part_table;
-		// if (!(get_option_set(options, numrelopts, SOPT_INHERIT)))
-		// 	result->inherit_table_options = ao_storage_opts.inherit_table_options;
 	}
 
 	validate_and_adjust_options(result, options, numrelopts, kind, validate);
