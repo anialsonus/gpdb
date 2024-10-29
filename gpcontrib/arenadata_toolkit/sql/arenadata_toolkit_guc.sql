@@ -166,6 +166,34 @@ SET arenadata_toolkit.tracking_schemas = "pg_catalog, mychema";
 
 ALTER DATABASE tracking1 SET arenadata_toolkit.tracking_schemas =  "pg_catalog, mychema";
 
+-- Test GUCs are set in the caller's session.
+SELECT arenadata_toolkit.tracking_register_db();
+SHOW arenadata_toolkit.tracking_is_db_tracked;
+
+SELECT arenadata_toolkit.tracking_unregister_db();
+SHOW arenadata_toolkit.tracking_is_db_tracked;
+
+SELECT arenadata_toolkit.tracking_set_snapshot_on_recovery(true);
+SHOW arenadata_toolkit.tracking_snapshot_on_recovery;
+
+SELECT arenadata_toolkit.tracking_set_snapshot_on_recovery(false);
+SHOW arenadata_toolkit.tracking_snapshot_on_recovery;
+
+SHOW arenadata_toolkit.tracking_schemas;
+SELECT arenadata_toolkit.tracking_register_schema('arenadata_toolkit');
+SHOW arenadata_toolkit.tracking_schemas;
+
+SELECT arenadata_toolkit.tracking_unregister_schema('arenadata_toolkit');
+SHOW arenadata_toolkit.tracking_schemas;
+
+SHOW arenadata_toolkit.tracking_relkinds;
+SELECT arenadata_toolkit.tracking_set_relkinds('r,t');
+SHOW arenadata_toolkit.tracking_relkinds;
+
+SHOW arenadata_toolkit.tracking_relstorages;
+SELECT arenadata_toolkit.tracking_set_relstorages('a');
+SHOW arenadata_toolkit.tracking_relstorages;
+
 \c contrib_regression;
 
 DROP DATABASE tracking1;

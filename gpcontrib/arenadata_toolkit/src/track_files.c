@@ -695,6 +695,10 @@ track_db(Oid dbid, bool reg)
 		AlterDatabaseSet(&stmt);
 	}
 
+	tf_guc_unlock_tracked_once();
+	SetConfigOption("arenadata_toolkit.tracking_is_db_tracked", reg ? "t" : "f",
+					PGC_S_DATABASE, PGC_S_DATABASE);
+
 	if (!reg)
 		bloom_set_unbind(&tf_shared_state->bloom_set, dbid);
 	else if (!bloom_set_bind(&tf_shared_state->bloom_set, dbid))
@@ -842,38 +846,31 @@ tracking_set_snapshot_on_recovery(PG_FUNCTION_ARGS)
 	A_Const		aconst =
 	{.type = T_A_Const,.val = {.type = T_String,.val.str = set ? "t" : "f"}};
 
-	if (Gp_role == GP_ROLE_DISPATCH)
-	{
-		AlterDatabaseSetStmt stmt;
-		VariableSetStmt v_stmt;
+	AlterDatabaseSetStmt stmt;
+	VariableSetStmt v_stmt;
 
-		stmt.type = T_AlterDatabaseSetStmt;
-		stmt.dbname = get_database_name(dbid);
-		stmt.setstmt = &v_stmt;
+	stmt.type = T_AlterDatabaseSetStmt;
+	stmt.dbname = get_database_name(dbid);
+	stmt.setstmt = &v_stmt;
 
-		if (stmt.dbname == NULL)
-			ereport(ERROR,
-			(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+	if (stmt.dbname == NULL)
+		ereport(ERROR,
+		(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
-		v_stmt.type = T_VariableSetStmt;
-		v_stmt.kind = VAR_SET_VALUE;
-		v_stmt.name = "arenadata_toolkit.tracking_snapshot_on_recovery";
-		v_stmt.args = lappend(NIL, &aconst);
-		v_stmt.is_local = false;
+	v_stmt.type = T_VariableSetStmt;
+	v_stmt.kind = VAR_SET_VALUE;
+	v_stmt.name = "arenadata_toolkit.tracking_snapshot_on_recovery";
+	v_stmt.args = lappend(NIL, &aconst);
+	v_stmt.is_local = false;
 
-		tf_guc_unlock_full_snapshot_on_recovery_once();
+	tf_guc_unlock_full_snapshot_on_recovery_once();
 
-		AlterDatabaseSet(&stmt);
-	}
+	AlterDatabaseSet(&stmt);
 
-	if (Gp_role == GP_ROLE_DISPATCH)
-	{
-		char	   *cmd =
-		psprintf("select arenadata_toolkit.tracking_set_snapshot_on_recovery(%s, %u)",
-				 set ? "true" : "false", dbid);
-
-		CdbDispatchCommand(cmd, 0, NULL);
-	}
+	/* Will set the GUC in caller session only on coordinator */
+	tf_guc_unlock_full_snapshot_on_recovery_once();
+	SetConfigOption("arenadata_toolkit.tracking_snapshot_on_recovery", set ? "t" : "f",
+					PGC_S_DATABASE, PGC_S_DATABASE);
 
 	PG_RETURN_BOOL(true);
 }
@@ -1032,6 +1029,12 @@ track_schema(const char *schemaName, Oid dbid, bool reg)
 
 	AlterDatabaseSet(&stmt);
 
+	/* Will set the GUC in caller session only on coordinator */
+	tf_guc_unlock_schemas_once();
+	SetConfigOption("arenadata_toolkit.tracking_schemas",
+					new_schemas ? new_schemas : DEFAULT_TRACKED_SCHEMAS,
+					PGC_S_DATABASE, PGC_S_DATABASE);
+
 	if (current_schemas)
 		pfree(current_schemas);
 	if (new_schemas)
@@ -1181,6 +1184,13 @@ tracking_set_relkinds(PG_FUNCTION_ARGS)
 	tf_guc_unlock_relkinds_once();
 
 	AlterDatabaseSet(&stmt);
+
+	/* Will set the GUC in caller session only on coordinator */
+	tf_guc_unlock_relkinds_once();
+	SetConfigOption("arenadata_toolkit.tracking_relkinds",
+					buf.len ? buf.data : DEFAULT_TRACKED_REL_KINDS,
+					PGC_S_DATABASE, PGC_S_DATABASE);
+
 	pfree(buf.data);
 
 	PG_RETURN_BOOL(true);
@@ -1280,6 +1290,12 @@ tracking_set_relstorages(PG_FUNCTION_ARGS)
 	tf_guc_unlock_relstorages_once();
 
 	AlterDatabaseSet(&stmt);
+
+	/* Will set the GUC in caller session only on coordinator */
+	tf_guc_unlock_relstorages_once();
+	SetConfigOption("arenadata_toolkit.tracking_relstorages",
+					buf.len ? buf.data : DEFAULT_TRACKED_REL_STORAGES,
+					PGC_S_DATABASE, PGC_S_DATABASE);
 
 	pfree(buf.data);
 

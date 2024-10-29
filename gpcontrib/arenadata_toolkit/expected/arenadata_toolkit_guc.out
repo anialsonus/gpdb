@@ -45,7 +45,7 @@ SELECT arenadata_toolkit.tracking_register_db();
 SHOW arenadata_toolkit.tracking_is_db_tracked;
  arenadata_toolkit.tracking_is_db_tracked 
 ------------------------------------------
- off
+ on
 (1 row)
 
 SELECT datname, setconfig FROM pg_db_role_setting JOIN pg_database ON
@@ -256,5 +256,120 @@ SET arenadata_toolkit.tracking_schemas = "pg_catalog, mychema";
 ERROR:  cannot change tracking status outside the tracking_register_schema function
 ALTER DATABASE tracking1 SET arenadata_toolkit.tracking_schemas =  "pg_catalog, mychema";
 ERROR:  cannot change tracking status outside the tracking_register_schema function
+-- Test GUCs are set in the caller's session.
+SELECT arenadata_toolkit.tracking_register_db();
+ tracking_register_db 
+----------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_is_db_tracked;
+ arenadata_toolkit.tracking_is_db_tracked 
+------------------------------------------
+ on
+(1 row)
+
+SELECT arenadata_toolkit.tracking_unregister_db();
+ tracking_unregister_db 
+------------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_is_db_tracked;
+ arenadata_toolkit.tracking_is_db_tracked 
+------------------------------------------
+ off
+(1 row)
+
+SELECT arenadata_toolkit.tracking_set_snapshot_on_recovery(true);
+ tracking_set_snapshot_on_recovery 
+-----------------------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_snapshot_on_recovery;
+ arenadata_toolkit.tracking_snapshot_on_recovery 
+-------------------------------------------------
+ on
+(1 row)
+
+SELECT arenadata_toolkit.tracking_set_snapshot_on_recovery(false);
+ tracking_set_snapshot_on_recovery 
+-----------------------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_snapshot_on_recovery;
+ arenadata_toolkit.tracking_snapshot_on_recovery 
+-------------------------------------------------
+ off
+(1 row)
+
+SHOW arenadata_toolkit.tracking_schemas;
+ arenadata_toolkit.tracking_schemas 
+------------------------------------
+ arenadata_toolkit
+(1 row)
+
+SELECT arenadata_toolkit.tracking_register_schema('arenadata_toolkit');
+ tracking_register_schema 
+--------------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_schemas;
+ arenadata_toolkit.tracking_schemas 
+------------------------------------
+ arenadata_toolkit
+(1 row)
+
+SELECT arenadata_toolkit.tracking_unregister_schema('arenadata_toolkit');
+ tracking_unregister_schema 
+----------------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_schemas;
+                    arenadata_toolkit.tracking_schemas                    
+--------------------------------------------------------------------------
+ public,arenadata_toolkit,pg_catalog,pg_toast,pg_aoseg,information_schema
+(1 row)
+
+SHOW arenadata_toolkit.tracking_relkinds;
+ arenadata_toolkit.tracking_relkinds 
+-------------------------------------
+ m,M,o
+(1 row)
+
+SELECT arenadata_toolkit.tracking_set_relkinds('r,t');
+ tracking_set_relkinds 
+-----------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_relkinds;
+ arenadata_toolkit.tracking_relkinds 
+-------------------------------------
+ r,t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_relstorages;
+ arenadata_toolkit.tracking_relstorages 
+----------------------------------------
+ v
+(1 row)
+
+SELECT arenadata_toolkit.tracking_set_relstorages('a');
+ tracking_set_relstorages 
+--------------------------
+ t
+(1 row)
+
+SHOW arenadata_toolkit.tracking_relstorages;
+ arenadata_toolkit.tracking_relstorages 
+----------------------------------------
+ a
+(1 row)
+
 \c contrib_regression;
 DROP DATABASE tracking1;

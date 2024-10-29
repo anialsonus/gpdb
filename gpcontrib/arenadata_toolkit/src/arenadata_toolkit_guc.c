@@ -69,7 +69,9 @@ check_guc(bool *toolkit_guc, GucSource source, bool *manual)
 	{
 		*toolkit_guc = false;
 
-		if (source != PGC_S_DATABASE && source != PGC_S_DEFAULT && source != PGC_S_TEST)
+		if (source != PGC_S_DATABASE &&
+			source != PGC_S_DEFAULT &&
+			source != PGC_S_TEST)
 			return false;
 
 		return true;
