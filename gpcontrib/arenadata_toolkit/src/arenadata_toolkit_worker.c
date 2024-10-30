@@ -138,8 +138,8 @@ track_dbs(List *tracked_dbs)
 	{
 		trackedDb = (tracked_db_t *) lfirst(cell);
 
-		bloom_set_bind(&tf_shared_state->bloom_set, trackedDb->dbid);
-		bloom_set_trigger_bits(&tf_shared_state->bloom_set, trackedDb->dbid,
+		bloom_set_bind(trackedDb->dbid);
+		bloom_set_trigger_bits(trackedDb->dbid,
 							   trackedDb->get_full_snapshot_on_recovery);
 	}
 }

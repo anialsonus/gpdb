@@ -37,7 +37,7 @@ file_node_set(RelFileNodeBackend *rnode)
 	if (!is_file_node_trackable(rnode))
 		return;
 
-	bloom_set_set(&tf_shared_state->bloom_set, rnode->node.dbNode, rnode->node.relNode);
+	bloom_set_set(rnode->node.dbNode, rnode->node.relNode);
 }
 
 /*
@@ -53,7 +53,7 @@ xact_end_create_callback(XactEvent event, void *arg)
 	elog(DEBUG1, "xact_end_create_callback");
 
 	if (event == XACT_EVENT_COMMIT)
-		bloom_set_merge(&tf_shared_state->bloom_set, non_committed_dbid, non_committed_bloom);
+		bloom_set_merge(non_committed_dbid, non_committed_bloom);
 
 	pfree(non_committed_bloom);
 	non_committed_bloom = NULL;
@@ -86,7 +86,7 @@ hook_create(RelFileNodeBackend rnode)
 		 rnode.backend, rnode.node.dbNode,
 		 rnode.node.spcNode, rnode.node.relNode);
 
-	bloom_set(non_committed_bloom, rnode.node.relNode);
+	bloom_set_bits(non_committed_bloom, rnode.node.relNode);
 
 }
 

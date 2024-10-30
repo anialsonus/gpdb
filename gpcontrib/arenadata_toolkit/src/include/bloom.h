@@ -18,7 +18,7 @@ typedef struct
 
 void		bloom_init(const uint32 bloom_size, bloom_t * bloom);
 bool		bloom_isset(bloom_t * bloom, Oid relnode);
-void		bloom_set(bloom_t * bloom, Oid relnode);
+void		bloom_set_bits(bloom_t * bloom, Oid relnode);
 void		bloom_set_all(bloom_t * bloom);
 void		bloom_clear(bloom_t * bloom);
 void		bloom_merge(bloom_t * dst, bloom_t * src);

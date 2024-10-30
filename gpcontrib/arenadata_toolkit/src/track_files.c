@@ -111,9 +111,9 @@ xact_end_get_callback(XactEvent event, void *arg)
 	if (event == XACT_EVENT_ABORT)
 	{
 		if (tf_get_global_state.rollback_bloom)
-			bloom_set_merge(&tf_shared_state->bloom_set, MyDatabaseId, tf_get_global_state.rollback_bloom);
+			bloom_set_merge(MyDatabaseId, tf_get_global_state.rollback_bloom);
 		else
-			bloom_set_merge(&tf_shared_state->bloom_set, MyDatabaseId, tf_get_global_state.bloom);
+			bloom_set_merge(MyDatabaseId, tf_get_global_state.bloom);
 		drops_track_move_undo(tf_get_global_state.drops, MyDatabaseId);
 	}
 
@@ -342,7 +342,7 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		if (tf_get_global_state.bloom == NULL)
 		{
 			tf_get_global_state.bloom = palloc(FULL_BLOOM_SIZE(bloom_size));
-			if (!bloom_set_move(&tf_shared_state->bloom_set, MyDatabaseId, tf_get_global_state.bloom))
+			if (!bloom_set_move(MyDatabaseId, tf_get_global_state.bloom))
 				ereport(ERROR,
 						(errcode(ERRCODE_GP_COMMAND_ERROR),
 						 errmsg("database %u is not tracked", MyDatabaseId),
@@ -363,7 +363,7 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 				bloom_copy(tf_get_global_state.bloom, tf_get_global_state.rollback_bloom);
 			}
 			bloom_clear(tf_get_global_state.bloom);
-			if (!bloom_set_move(&tf_shared_state->bloom_set, MyDatabaseId, tf_get_global_state.bloom))
+			if (!bloom_set_move(MyDatabaseId, tf_get_global_state.bloom))
 				ereport(ERROR,
 						(errcode(ERRCODE_GP_COMMAND_ERROR),
 						 errmsg("database %u is not tracked", MyDatabaseId),
@@ -691,8 +691,8 @@ track_db(Oid dbid, bool reg)
 					PGC_S_DATABASE, PGC_S_DATABASE);
 
 	if (!reg)
-		bloom_set_unbind(&tf_shared_state->bloom_set, dbid);
-	else if (!bloom_set_bind(&tf_shared_state->bloom_set, dbid))
+		bloom_set_unbind(dbid);
+	else if (!bloom_set_bind(dbid))
 		ereport(ERROR,
 				(errmsg("[arenadata_toolkit] exceeded maximum number of tracked databases")));
 }
@@ -1303,7 +1303,7 @@ tracking_trigger_initial_snapshot(PG_FUNCTION_ARGS)
 	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 	elog(LOG, "[arenadata_toolkit] tracking_trigger_initial_snapshot dbid: %u", dbid);
 
-	if (!bloom_set_trigger_bits(&tf_shared_state->bloom_set, dbid, true))
+	if (!bloom_set_trigger_bits(dbid, true))
 		ereport(ERROR,
 		(errmsg("Failed to find corresponding filter to database %u", dbid)));
 
@@ -1327,7 +1327,7 @@ tracking_is_initial_snapshot_triggered(PG_FUNCTION_ARGS)
 
 	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
-	is_triggered = bloom_set_is_all_bits_triggered(&tf_shared_state->bloom_set, dbid);
+	is_triggered = bloom_set_is_all_bits_triggered(dbid);
 
 	elog(LOG, "[arenadata_toolkit] is_initial_snapshot_triggered:%d dbid: %u", is_triggered, dbid);
 

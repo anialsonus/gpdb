@@ -103,7 +103,7 @@ bloom_isset(bloom_t * bloom, Oid relnode)
  * relnode	- relation file node OID to insert
  */
 void
-bloom_set(bloom_t * bloom, Oid relnode)
+bloom_set_bits(bloom_t * bloom, Oid relnode)
 {
 	uint32		hashes[MAX_BLOOM_HASH_FUNCS];
 

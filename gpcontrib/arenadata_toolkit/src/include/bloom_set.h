@@ -24,14 +24,13 @@ typedef struct
 														 * bloom_entry_t */
 }	bloom_set_t;
 
-void		bloom_set_init(const uint32 bloom_count, const uint32 bloom_size, bloom_set_t * bloom_set);
-bool		bloom_set_bind(bloom_set_t * bloom_set, Oid dbid);
-void		bloom_set_unbind(bloom_set_t * bloom_set, Oid dbid);
-void		bloom_set_set(bloom_set_t * bloom_set, Oid dbid, Oid relNode);
-bool		bloom_set_move(bloom_set_t * bloom_set, Oid dbid, bloom_t * dest);
-bool		bloom_set_merge(bloom_set_t * bloom_set, Oid dbid, bloom_t * m_bloom);
-bool		bloom_set_trigger_bits(bloom_set_t * bloom_set, Oid dbid, bool on);
-bool		bloom_set_is_all_bits_triggered(bloom_set_t * bloom_set, Oid dbid);
-int			bloom_set_count(bloom_set_t * bloom_set);
+void		bloom_set_init(const uint32 bloom_count, const uint32 bloom_size);
+bool		bloom_set_bind(Oid dbid);
+void		bloom_set_unbind(Oid dbid);
+void		bloom_set_set(Oid dbid, Oid relNode);
+bool		bloom_set_move(Oid dbid, bloom_t * dest);
+bool		bloom_set_merge(Oid dbid, bloom_t * from);
+bool		bloom_set_trigger_bits(Oid dbid, bool on);
+bool		bloom_set_is_all_bits_triggered(Oid dbid);
 
 #endif   /* BLOOM_SET_H */

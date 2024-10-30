@@ -83,7 +83,7 @@ tf_shmem_hook(void)
 	{
 		pg_atomic_init_flag(&tf_shared_state->tracking_is_initialized);
 		pg_atomic_init_flag(&tf_shared_state->tracking_error);
-		bloom_set_init(db_track_count, bloom_size, &tf_shared_state->bloom_set);
+		bloom_set_init(db_track_count, bloom_size);
 	}
 
 	init_lwlocks();
