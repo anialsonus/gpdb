@@ -515,8 +515,8 @@ fi
 # but has its own.  Also check other compiler-specific flags here.
 
 if test "$GCC" = yes -a "$ICC" = no; then
-  CFLAGS="-Wall -Wmissing-prototypes -Wpointer-arith -Wimplicit-fallthrough -Wvla -Wno-deprecated-declarations"
-  CXXFLAGS="-Wall -Wpointer-arith -Wno-deprecated-declarations"
+  CFLAGS="-Wall -Wmissing-prototypes -Wpointer-arith -Wimplicit-fallthrough -Wvla"
+  CXXFLAGS="-Wall -Wpointer-arith"
   # These work in some but not all gcc versions
   save_CFLAGS=$CFLAGS
   # GPDB code is full of declarations after statement.
@@ -545,12 +545,6 @@ if test "$GCC" = yes -a "$ICC" = no; then
   # Disable FP optimizations that cause various errors on gcc 4.5+ or maybe 4.6+
   PGAC_PROG_CC_CFLAGS_OPT([-fexcess-precision=standard])
   PGAC_PROG_CXX_CXXFLAGS_OPT([-fexcess-precision=standard])
-
-  # Silence compiler warnings about variables that are set, but otherwise
-  # unused. All of these warnings have been fixed in PostgreSQL, but there is
-  # still some GPDB added code that emit these. TODO: Fix the GPDB code and
-  # remove this.
-  PGAC_PROG_CC_CFLAGS_OPT([-Wno-unused-but-set-variable])
 
   PGAC_PROG_CXX_CFLAGS_OPT([-fexcess-precision=standard])
   # Optimization flags for specific files that benefit from vectorization
