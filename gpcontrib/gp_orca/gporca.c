@@ -10,6 +10,8 @@
 #include "utils/memutils.h"
 #include "utils/guc.h"
 
+extern bool optimizer;
+
 extern void InitGPOPT();
 extern void TerminateGPOPT();
 
@@ -119,6 +121,9 @@ _PG_init(void)
 
 		prev_planner = planner_hook;
 		planner_hook = gp_orca_planner;
+
+		/* enable orca here */
+		optimizer = true;
 	}
 }
 
@@ -128,6 +133,9 @@ _PG_fini(void)
 	elog(LOG, "[GP_ORCA] _PG_fini");
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
+		/* disable orca here */
+		optimizer = false;
+
 		planner_hook = prev_planner;
 
 		TerminateGPOPT();

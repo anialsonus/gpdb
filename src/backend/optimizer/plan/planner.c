@@ -354,9 +354,6 @@ standard_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 	instr_time		starttime;
 	instr_time		endtime;
 
-	if (optimizer)
-		elog(ERROR, "Add gp_orca to shared_preload_libraries");
-
 	/*
 	 * Fall back to using the PostgreSQL planner in case Orca didn't run (in
 	 * utility mode or on a segment) or if it didn't produce a plan.
