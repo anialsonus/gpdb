@@ -93,15 +93,6 @@ jobs:
           sudo apt install -y libuv1-dev libpam0g-dev libldap-dev libipc-run-perl abi-dumper
           sudo ln -fs python2 /usr/bin/python
 
-      - name: Build libxerces 3.1.2
-        run: |
-          wget https://github.com/arenadata/gp-xerces/archive/refs/tags/v3.1.2-p1.tar.gz
-          tar -xzf v3.1.2-p1.tar.gz
-          pushd gp-xerces-3.1.2-p1
-          ./configure
-          make -j`nproc` && sudo make install
-          popd
-
       - name: Build Greenplum
         run: |
           ## TODO: Since abi-dumper requires debug info and it's hard to inject CFLAGS via the script for
