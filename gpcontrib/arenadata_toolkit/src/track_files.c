@@ -96,6 +96,12 @@ tf_check_shmem_error(void)
 				 errhint("Load extension's code through shared_preload_library configuration")));
 }
 
+static inline Oid
+get_dbid(Oid dbid)
+{
+	return (dbid == InvalidOid) ? MyDatabaseId : dbid;
+}
+
 /*
  * In case of abort bloom is merged back as well as drops track.
  */
@@ -371,7 +377,7 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 							"to enable tracking")));
 		}
 		/* initial snapshot shouldn't return drops */
-		if (tf_get_global_state.bloom && !tf_get_global_state.bloom->is_set_all)
+		if (!tf_get_global_state.bloom->is_set_all)
 		{
 			tf_get_global_state.drops = drops_track_move(MyDatabaseId);
 			tf_get_global_state.next_drop = list_head(tf_get_global_state.drops);
@@ -408,11 +414,8 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		state = (tf_main_func_state_t *) palloc0(sizeof(tf_main_func_state_t));
 		funcctx->user_fctx = (void *) state;
 
-		if (tf_get_global_state.bloom)
-		{
-			state->pg_class_rel = heap_open(RelationRelationId, AccessShareLock);
-			state->scan = systable_beginscan(state->pg_class_rel, InvalidOid, false, NULL, 0, NULL);
-		}
+		state->pg_class_rel = heap_open(RelationRelationId, AccessShareLock);
+		state->scan = systable_beginscan(state->pg_class_rel, InvalidOid, false, NULL, 0, NULL);
 
 		MemoryContextSwitchTo(oldcontext);
 	}
@@ -700,12 +703,10 @@ track_db(Oid dbid, bool reg)
 Datum
 tracking_register_db_main(PG_FUNCTION_ARGS)
 {
-	Oid			dbid = PG_GETARG_OID(1);
+	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 	bool		reg = PG_GETARG_BOOL(0);
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	elog(LOG, "[arenadata_toolkit] registering database %u for tracking", dbid);
 
@@ -764,7 +765,7 @@ is_initialized()
 Datum
 tracking_register_db(PG_FUNCTION_ARGS)
 {
-	Oid			dbid = PG_GETARG_OID(0);
+	Oid			dbid = get_dbid(PG_GETARG_OID(0));
 
 	tf_check_shmem_error();
 
@@ -773,7 +774,6 @@ tracking_register_db(PG_FUNCTION_ARGS)
 				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
 				 errhint("Wait arenadata_toolkit.tracking_worker_naptime_sec and try again")));
 
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 	elog(LOG, "[arenadata_toolkit] registering database %u for tracking", dbid);
 
 	track_db(dbid, true);
@@ -797,7 +797,7 @@ tracking_register_db(PG_FUNCTION_ARGS)
 Datum
 tracking_unregister_db(PG_FUNCTION_ARGS)
 {
-	Oid			dbid = PG_GETARG_OID(0);
+	Oid			dbid = get_dbid(PG_GETARG_OID(0));
 
 	tf_check_shmem_error();
 
@@ -806,7 +806,6 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
 				 errhint("Wait arenadata_toolkit.tracking_worker_naptime_sec and try again")));
 
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 	elog(LOG, "[arenadata_toolkit] unregistering database %u from tracking", dbid);
 
 	track_db(dbid, false);
@@ -828,11 +827,9 @@ Datum
 tracking_set_snapshot_on_recovery(PG_FUNCTION_ARGS)
 {
 	bool		set = PG_GETARG_BOOL(0);
-	Oid			dbid = PG_GETARG_OID(1);
+	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	A_Const		aconst =
 	{.type = T_A_Const,.val = {.type = T_String,.val.str = set ? "t" : "f"}};
@@ -1036,11 +1033,9 @@ Datum
 tracking_register_schema(PG_FUNCTION_ARGS)
 {
 	const char *schema_name = NameStr(*PG_GETARG_NAME(0));
-	Oid			dbid = PG_GETARG_OID(1);
+	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	if (!SearchSysCacheExists1(NAMESPACENAME, CStringGetDatum(schema_name)))
 		ereport(ERROR,
@@ -1058,11 +1053,9 @@ Datum
 tracking_unregister_schema(PG_FUNCTION_ARGS)
 {
 	const char *schema_name = NameStr(*PG_GETARG_NAME(0));
-	Oid			dbid = PG_GETARG_OID(1);
+	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	if (!SearchSysCacheExists1(NAMESPACENAME, CStringGetDatum(schema_name)))
 		ereport(ERROR,
@@ -1103,7 +1096,7 @@ Datum
 tracking_set_relkinds(PG_FUNCTION_ARGS)
 {
 	char	   *relkinds_str = NameStr(*PG_GETARG_NAME(0));
-	Oid			dbid = PG_GETARG_OID(1);
+	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 	char	   *token;
 	char	   *str_copy;
 	bool		seen_relkinds[256] = {false};
@@ -1113,8 +1106,6 @@ tracking_set_relkinds(PG_FUNCTION_ARGS)
 	A_Const		arg;
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	initStringInfo(&buf);
 	str_copy = pstrdup(relkinds_str);
@@ -1208,7 +1199,7 @@ Datum
 tracking_set_relstorages(PG_FUNCTION_ARGS)
 {
 	char	   *relstorages_str = NameStr(*PG_GETARG_NAME(0));
-	Oid			dbid = PG_GETARG_OID(1);
+	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 	char	   *token;
 	char	   *str_copy;
 	bool		seen_relstorages[256] = {false};
@@ -1218,8 +1209,6 @@ tracking_set_relstorages(PG_FUNCTION_ARGS)
 	A_Const		arg;
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	initStringInfo(&buf);
 	str_copy = pstrdup(relstorages_str);
@@ -1296,11 +1285,10 @@ tracking_set_relstorages(PG_FUNCTION_ARGS)
 Datum
 tracking_trigger_initial_snapshot(PG_FUNCTION_ARGS)
 {
-	Oid			dbid = PG_GETARG_OID(0);
+	Oid			dbid = get_dbid(PG_GETARG_OID(0));
 
 	tf_check_shmem_error();
 
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 	elog(LOG, "[arenadata_toolkit] tracking_trigger_initial_snapshot dbid: %u", dbid);
 
 	if (!bloom_set_trigger_bits(dbid, true))
@@ -1320,12 +1308,10 @@ tracking_trigger_initial_snapshot(PG_FUNCTION_ARGS)
 Datum
 tracking_is_initial_snapshot_triggered(PG_FUNCTION_ARGS)
 {
-	Oid			dbid = PG_GETARG_OID(0);
+	Oid			dbid = get_dbid(PG_GETARG_OID(0));
 	bool		is_triggered = false;
 
 	tf_check_shmem_error();
-
-	dbid = (dbid == InvalidOid) ? MyDatabaseId : dbid;
 
 	is_triggered = bloom_set_is_all_bits_triggered(dbid);
 
