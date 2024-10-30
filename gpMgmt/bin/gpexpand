@@ -774,6 +774,10 @@ class SegmentTemplate:
     def _distribute_tarfile(self):
         """Distributes template tar file to hosts"""
         for host in self.hosts:
+            # If the source and the destination are the same, scp may corrupt
+            # the file.
+            if host == getLocalHostname():
+                continue
             logger.debug('Copying tar file to %s' % host)
             cpCmd = Scp(name='gpexpand distribute tar file to new hosts',
                         srcFile=self.schema_tar_file,
