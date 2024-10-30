@@ -55,6 +55,14 @@ PG_CXXFLAGS = \
 	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libgpdbcost/include \
 	-I$(top_srcdir)/gpcontrib/gp_orca/include \
 
+PG_CPPFLAGS = \
+	-fno-omit-frame-pointer \
+	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libgpos/include \
+	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libgpopt/include \
+	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libnaucrates/include \
+	-I$(top_srcdir)/gpcontrib/gp_orca/gporca/libgpdbcost/include \
+	-I$(top_srcdir)/gpcontrib/gp_orca/include \
+
 SHLIB_LINK += -lxerces-c
 
 ifdef USE_PGXS
