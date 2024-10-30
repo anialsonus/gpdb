@@ -29,6 +29,11 @@ from gp_segment_configuration where role = 'p' and content = 0;
 from gp_segment_configuration where role = 'p' AND content = 0;
 1&:create table fts_reset_t(a int);
 
+-- Make sure that fault is processed and the following query started after seg0 has actually gone
+-- Of course, sleeping is not the best solution, but wait_until_triggered_fault won't work here 
+-- because seg0 process with faults hash table has gone.
+select pg_sleep(0.5);
+
 -- This should fail due to the seg0 in reset mode
 2&:create table fts_reset_t2(a int);
 
