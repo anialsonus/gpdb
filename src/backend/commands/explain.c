@@ -1487,7 +1487,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			ExplainState *es)
 {
 	Plan	   *plan = planstate->plan;
-	PlanState  *parentplanstate;
 	ExecSlice  *save_currentSlice = es->currentSlice;    /* save */
 	const char *pname;			/* node type name for text output */
 	const char *sname;			/* node type name for non-text output */
@@ -1504,7 +1503,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 	ExecSlice  *parentSlice = NULL;
 
 	/* Remember who called us. */
-	parentplanstate = es->parentPlanState;
 	es->parentPlanState = planstate;
 
 	/*
@@ -2354,7 +2352,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			show_tablesample(((SampleScan *) plan)->tablesample,
 							 planstate, ancestors, es);
 			/* fall through to print additional fields the same as SeqScan */
-			/* FALLTHROUGH */
+			fallthru;
 		case T_SeqScan:
 		case T_DynamicSeqScan:
 		case T_ValuesScan:

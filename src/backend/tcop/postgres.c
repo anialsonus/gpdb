@@ -3707,7 +3707,7 @@ RecoveryConflictInterrupt(ProcSignalReason reason)
 					return;
 
 				/* Intentional fall through to check wait for pin */
-				/* FALLTHROUGH */
+				fallthru;
 
 			case PROCSIG_RECOVERY_CONFLICT_BUFFERPIN:
 
@@ -3733,7 +3733,7 @@ RecoveryConflictInterrupt(ProcSignalReason reason)
 				MyProc->recoveryConflictPending = true;
 
 				/* Intentional fall through to error handling */
-				/* FALLTHROUGH */
+				fallthru;
 
 			case PROCSIG_RECOVERY_CONFLICT_LOCK:
 			case PROCSIG_RECOVERY_CONFLICT_TABLESPACE:
@@ -3778,7 +3778,7 @@ RecoveryConflictInterrupt(ProcSignalReason reason)
 				}
 
 				/* Intentional fall through to session cancel */
-				/* FALLTHROUGH */
+				fallthru;
 
 			case PROCSIG_RECOVERY_CONFLICT_DATABASE:
 				RecoveryConflictPending = true;
@@ -5194,7 +5194,10 @@ PostgresMain(int argc, char *argv[],
         /* Reset elog globals */
         currentSliceId = UNSET_SLICE_ID;
         if (Gp_role == GP_ROLE_EXECUTE)
-            gp_command_count = 0;
+		{
+			gp_command_count = 0;
+			MyProc->queryCommandId = 0;
+		}
 
 		/*
 		 * Do deactiving and runaway detecting before ReadyForQuery(),
@@ -5477,8 +5480,12 @@ PostgresMain(int argc, char *argv[],
 					/* Set statement_timestamp() */
  					SetCurrentStatementStartTimestamp();
 
-					/* get the client command serial# */
-					gp_command_count = pq_getmsgint(&input_message, 4);
+					/*
+					 * Get the command id from the QD. gp_command_count on QE
+					 * is set to be the same as queryCommandId.
+					 */
+					MyProc->queryCommandId = pq_getmsgint(&input_message, 4);
+					gp_command_count = MyProc->queryCommandId;
 
 					elog(DEBUG1, "Message type %c received by from libpq, len = %d", firstchar, input_message.len); /* TODO: Remove this */
 

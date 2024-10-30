@@ -852,7 +852,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 							 errmsg("primary key constraints are not supported on foreign tables"),
 							 parser_errposition(cxt->pstate,
 												constraint->location)));
-				/* FALL THRU */
+				fallthru;
 
 			case CONSTR_UNIQUE:
 				if (cxt->isforeign)
@@ -2740,7 +2740,6 @@ transformDistributedBy(ParseState *pstate,
 
 		if (cxt->inhRelations)
 		{
-			bool		found = false;
 			/* try inherited tables */
 			ListCell   *inher;
 
@@ -2786,7 +2785,6 @@ transformDistributedBy(ParseState *pstate,
 										"table. ", inhname),
 								 errhint("The 'DISTRIBUTED BY' clause determines the distribution of data."
 								 		 " Make sure column(s) chosen are the optimal data distribution key to minimize skew.")));
-						found = true;
 						break;
 					}
 				}
