@@ -27,16 +27,6 @@ package manager.
 
 # First Time Setup
 
-## Pre-Requisites
-
-GPORCA uses the following library:
-* GP-Xerces - Greenplum's patched version of Xerces-C 3.1.X
-
-### Installing GP-Xerces
-
-[GP-XERCES is available here](https://github.com/greenplum-db/gp-xerces). The GP-XERCES README
-gives instructions for building and installing.
-
 ## Build and install GPORCA
 
 ORCA is built automatically with GPDB as long as `--disable-orca` is not used.
