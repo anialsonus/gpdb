@@ -631,6 +631,12 @@ repeatPalloc(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(0);
 }
 
+/*
+ * This function is a copy of resGroupPalloc that existed before the patch.
+ * It's needed for the tests, but we can't use the old name because we need
+ * to maintain compatibility with the old tests which don't expect resGroupPalloc
+ * to allocate extra memory which is startupChunks
+ */
 PG_FUNCTION_INFO_V1(resGroupPallocIgnoreStartup);
 Datum
 resGroupPallocIgnoreStartup(PG_FUNCTION_ARGS)
