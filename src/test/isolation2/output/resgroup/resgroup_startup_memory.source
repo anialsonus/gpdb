@@ -1,10 +1,9 @@
 -- start_ignore
 ! gpconfig -c runaway_detector_activation_percent -v 100;
 ! gpstop -rai;
--- end_ignore
 
 CREATE OR REPLACE FUNCTION resGroupPalloc(float) RETURNS int AS '/home/gpadmin/gpdb_src/src/test/isolation2/../regress/regress.so', 'resGroupPalloc' LANGUAGE C READS SQL DATA;
-CREATE
+-- end_ignore
 
 ALTER RESOURCE GROUP default_group SET memory_limit 10;
 ALTER
@@ -72,10 +71,9 @@ DETAIL:  Vmem limit reached, failed to allocate 201326672 bytes from tracker, wh
 -- start_ignore
 ! gpconfig -c runaway_detector_activation_percent -v 20;
 ! gpstop -rai;
--- end_ignore
 
 5: CREATE OR REPLACE FUNCTION resGroupPallocIgnoreStartup(float) RETURNS int AS '/home/gpadmin/gpdb_src/src/test/isolation2/../regress/regress.so', 'resGroupPallocIgnoreStartup' LANGUAGE C READS SQL DATA;
-CREATE
+-- end_ignore
 
 5: drop role test_role;
 DROP

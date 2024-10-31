@@ -1,11 +1,11 @@
 -- start_ignore
 ! gpconfig -c runaway_detector_activation_percent -v 100;
 ! gpstop -rai;
--- end_ignore
 
 CREATE OR REPLACE FUNCTION resGroupPalloc(float) RETURNS int AS
 '@abs_builddir@/../regress/regress@DLSUFFIX@', 'resGroupPalloc'
 LANGUAGE C READS SQL DATA;
+-- end_ignore
 
 ALTER RESOURCE GROUP default_group SET memory_limit 10;
 ALTER RESOURCE GROUP admin_group SET memory_limit 30;
@@ -46,11 +46,11 @@ ALTER RESOURCE GROUP default_group SET concurrency 1;
 -- start_ignore
 ! gpconfig -c runaway_detector_activation_percent -v 20;
 ! gpstop -rai;
--- end_ignore
 
 5: CREATE OR REPLACE FUNCTION resGroupPallocIgnoreStartup(float) RETURNS int AS
 '@abs_builddir@/../regress/regress@DLSUFFIX@', 'resGroupPallocIgnoreStartup'
 LANGUAGE C READS SQL DATA;
+-- end_ignore
 
 5: drop role test_role;
 5: drop resource group test_group;
