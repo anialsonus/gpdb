@@ -17,8 +17,6 @@ extern void TerminateGPOPT();
 
 extern void compute_jit_flags(PlannedStmt* pstmt);
 
-// extern bool optimizer;
-
 PG_MODULE_MAGIC;
 
 void		_PG_init(void);
@@ -32,8 +30,6 @@ static PlannedStmt *
 gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 {
 	PlannedStmt	   *result;
-
-	elog(LOG, "[GP_ORCA] gp_orca_planner start");
 
 	PG_TRY();
 	{
@@ -61,8 +57,6 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 
 			if (gp_log_optimization_time)
 				INSTR_TIME_SET_CURRENT(starttime);
-
-			elog(LOG, "[RESKIN] gp_orca_planner - invoke ORCA");
 
 			result = optimize_query(parse, cursorOptions, boundParams);
 
@@ -107,7 +101,6 @@ _PG_init(void)
 	if (!process_shared_preload_libraries_in_progress)
 		return;
 
-	elog(LOG, "[GP_ORCA] _PG_init");
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		/* Initialize GPOPT */
@@ -130,7 +123,6 @@ _PG_init(void)
 void
 _PG_fini(void)
 {
-	elog(LOG, "[GP_ORCA] _PG_fini");
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		/* disable orca here */
