@@ -29,7 +29,7 @@ static planner_hook_type prev_planner = NULL;
 static PlannedStmt *
 gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 {
-	PlannedStmt	   *result;
+	PlannedStmt	   *result = NULL;
 
 	PG_TRY();
 	{
@@ -75,22 +75,22 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 				INSTR_TIME_SUBTRACT(endtime, starttime);
 				elog(LOG, "Optimizer Time: %.3f ms", INSTR_TIME_GET_MILLISEC(endtime));
 			}
-
-			if (result)
-				return result;
 		}
-
-		if (prev_planner)
-			result = (*prev_planner) (parse, cursorOptions, boundParams);
-		else
-			result = standard_planner(parse, cursorOptions, boundParams);
-
 	}
 	PG_CATCH();
 	{
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
+
+	if (result)
+		return result;
+
+	if (prev_planner)
+		result = (*prev_planner) (parse, cursorOptions, boundParams);
+	else
+		result = standard_planner(parse, cursorOptions, boundParams);
+
 
 	return result;
 }
