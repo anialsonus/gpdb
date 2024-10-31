@@ -30,7 +30,6 @@
 #include "optimizer/geqo.h"
 #endif
 #include "optimizer/joininfo.h"
-#include "optimizer/orca.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/paths.h"

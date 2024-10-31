@@ -53,7 +53,6 @@
 #include "optimizer/clauses.h"
 #include "optimizer/tlist.h"
 #include "optimizer/optimizer.h"
-#include "optimizer/orca.h"
 
 #ifdef USE_ORCA_RE
 extern char *SerializeDXLPlan(Query *parse);
