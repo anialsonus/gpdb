@@ -774,8 +774,11 @@ class SegmentTemplate:
     def _distribute_tarfile(self):
         """Distributes template tar file to hosts"""
         for host in self.hosts:
+            # If the source and the destination are the same, scp may corrupt
+            # the file.
+            if host == getLocalHostname():
+                continue
             logger.debug('Copying tar file to %s' % host)
-            logger.info('schema_tar_file: %s, segmentTarDir: %s, segTarFile: %s, localHostname: %s, host: %s' % (self.schema_tar_file, canonicalize(self.segTarDir), self.segTarFile, getLocalHostname(), host))
             cpCmd = Scp(name='gpexpand distribute tar file to new hosts',
                         srcFile=self.schema_tar_file,
                         dstFile=self.segTarDir,
@@ -2664,7 +2667,6 @@ def main(options, args, parser):
             _gp_expand.setup_schema()
             _gp_expand.prepare_schema()
             _gp_expand.sync_new_mirrors()
-            raise ValidationError()
             logger.info('************************************************')
             logger.info('Initialization of the system expansion complete.')
             logger.info('To begin table expansion onto the new segments')

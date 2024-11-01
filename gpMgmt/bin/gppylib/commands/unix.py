@@ -613,8 +613,6 @@ class Scp(Command):
             cmdStr = cmdStr + canonicalize(dstHost) + ":"
         cmdStr = cmdStr + dstFile
 
-        logger.info('cmdStr: %s' % (cmdStr))
-
         Command.__init__(self, name, cmdStr, ctxt, remoteHost)
 
 # -------------create tar------------------
