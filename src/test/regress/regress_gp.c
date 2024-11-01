@@ -679,14 +679,9 @@ resGroupPalloc(PG_FUNCTION_ARGS)
 
 	ResGroupGetMemInfo(&memLimit, &slotQuota, &sharedQuota);
 	if (!startupConsidered)
-	{
 		size = ceilf(memLimit * ratio) - VmemTracker_GetStartupChunks();
-		startupConsidered = true;
-	}
 	else
-	{
 		size = ceilf(memLimit * ratio);
-	}
 
 	count = size / 512;
 	for (i = 0; i < count; i++)
@@ -694,6 +689,9 @@ resGroupPalloc(PG_FUNCTION_ARGS)
 
 	size %= 512;
 	MemoryContextAlloc(TopMemoryContext, size * 1024 * 1024);
+
+	if (!startupConsidered)
+		startupConsidered = true;
 
 	PG_RETURN_INT32(0);
 }
