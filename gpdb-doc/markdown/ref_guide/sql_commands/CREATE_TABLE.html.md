@@ -290,7 +290,7 @@ INHERITS \( parent\_table \[, …\]\)
 LIKE source\_table like\_option `...`\]
 :   The `LIKE` clause specifies a table from which the new table automatically copies all column names, their data types, not-null constraints, and distribution policy. Unlike `INHERITS`, the new table and original table are completely decoupled after creation is complete.
 
-:   > **Note** Partition structure is not copied. Storage properties like append-optimized are only copied if `INCLUDING STORAGE` is specified.
+:   > **Note** Partition structure is not copied. Storage properties like append-optimized are only copied if `INCLUDING STORAGE` is specified. However, child partitions inherit all the storage properties of the root partition.
 
 :   Default expressions for the copied column definitions will only be copied if `INCLUDING DEFAULTS` is specified. The default behavior is to exclude default expressions, resulting in the copied columns in the new table having null defaults.
 

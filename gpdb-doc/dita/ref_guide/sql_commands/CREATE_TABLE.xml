@@ -344,7 +344,8 @@ CREATE [ [GLOBAL | LOCAL] {TEMPORARY | TEMP} | UNLOGGED ] TABLE [IF NOT EXISTS]
             are completely decoupled after creation is complete.</pd>
           <pd>
             <note>Partition structure is not copied. Storage properties like append-optimized are
-            only copied if <codeph>INCLUDING STORAGE</codeph> is specified.</note>
+            only copied if <codeph>INCLUDING STORAGE</codeph> is specified. However, child
+            partitions inherit all the storage properties of the root partition.</note>
           </pd>
           <pd>Default expressions for the copied column definitions will only be copied if
               <codeph>INCLUDING DEFAULTS</codeph> is specified. The default behavior is to exclude
