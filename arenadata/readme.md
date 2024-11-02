@@ -108,6 +108,17 @@ bash arenadata/scripts/run_behave_tests.bash
 bash arenadata/scripts/run_behave_tests.bash gpstart gpstop
 ```
 
+## Building with alternative compiler
+
+You can specify a custom compiler to build gpdb with. For that, you need to specify CC and CXX arguments
+with --build-arg option. You can also skip unit tests with SKIP_UNITTESTS flag. For example, building
+with clang without running unit tests requires:
+```
+docker build -t gpdb7_regress:latest -f arenadata/Dockerfile . --build-arg CC=clang --build-arg CXX=clang++ --build-arg SKIP_UNITTESTS=true
+```
+There are no restrictions on which compiler you can use, since CC and CXX are just env variables which are
+passed as-is, so you need to make sure that the name you pass is available in $PATH.
+
 
 Tests use `allure-behave` package and store allure output files in `allure-results` folder.
 Also, the allure report for each failed test has gpdb logs attached files. See `gpMgmt/test/behave_utils/arenadata/formatter.py`
