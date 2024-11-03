@@ -72,7 +72,6 @@ tf_shmem_hook(void)
 	bool		found;
 	Size		size;
 
-	init_bloom_invariants();
 	size = tf_shmem_calc_size();
 
 	LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
@@ -83,10 +82,12 @@ tf_shmem_hook(void)
 	{
 		pg_atomic_init_flag(&tf_shared_state->tracking_is_initialized);
 		pg_atomic_init_flag(&tf_shared_state->tracking_error);
-		bloom_set_init(db_track_count, bloom_size);
-	}
 
-	init_lwlocks();
+		bloom_set_init(db_track_count, bloom_size);
+
+		init_lwlocks();
+		init_bloom_invariants();
+	}
 
 	LWLockRelease(AddinShmemInitLock);
 
