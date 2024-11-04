@@ -13,12 +13,7 @@
 //	@test:
 //
 //---------------------------------------------------------------------------
-
-extern "C" {
-#include "postgres.h"
-
-#include "executor/executor.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpopt/gpdbwrappers.h"
 #include "gpopt/translate/CTranslatorScalarToDXL.h"

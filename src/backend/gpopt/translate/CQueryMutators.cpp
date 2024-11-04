@@ -13,14 +13,9 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/makefuncs.h"
-#include "nodes/parsenodes.h"
-#include "nodes/plannodes.h"
-#include "optimizer/walkers.h"
-}
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpopt/base/CUtils.h"
 #include "gpopt/gpdbwrappers.h"
@@ -1160,7 +1155,7 @@ CQueryMutators::MakeTopLevelTargetEntry(TargetEntry *old_target_entry,
 //		Return the column name of the target list entry
 //---------------------------------------------------------------------------
 CHAR *
-CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry, Query *query)
+CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry, Query *query __attribute__ ((unused)))
 {
 	if (nullptr != target_entry->resname)
 	{
@@ -1696,5 +1691,7 @@ CQueryMutators::ReassignSortClause(Query *top_level_query,
 	derived_table_query->limitOffset = nullptr;
 	derived_table_query->limitCount = nullptr;
 }
+
+#pragma GCC diagnostic pop
 
 // EOF

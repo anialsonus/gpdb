@@ -14,12 +14,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/makefuncs.h"
-#include "nodes/primnodes.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpopt/translate/CMappingElementColIdParamId.h"
 

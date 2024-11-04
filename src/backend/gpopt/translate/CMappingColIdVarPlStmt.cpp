@@ -14,11 +14,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/primnodes.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpos/base.h"
 #include "gpos/common/CAutoP.h"

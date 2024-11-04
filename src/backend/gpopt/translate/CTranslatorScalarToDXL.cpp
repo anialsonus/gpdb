@@ -13,17 +13,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/parsenodes.h"
-#include "nodes/plannodes.h"
-#include "nodes/primnodes.h"
-#include "utils/date.h"
-#include "utils/datum.h"
-#include "utils/guc.h"
-#include "utils/uuid.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include <vector>
 
@@ -275,7 +265,7 @@ CTranslatorScalarToDXL::TranslateVarToDXL(
 //---------------------------------------------------------------------------
 CDXLNode *
 CTranslatorScalarToDXL::TranslateParamToDXL(
-	const Expr *expr, const CMappingVarColId *var_colid_mapping)
+	const Expr *expr, const CMappingVarColId *var_colid_mapping __attribute__ ((unused)))
 {
 	GPOS_ASSERT(IsA(expr, Param));
 	const Param *param = (Param *) expr;
@@ -2172,7 +2162,7 @@ CTranslatorScalarToDXL::TranslateArrayRefToDXL(
 
 CDXLNode *
 CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(
-	const Expr *expr, const CMappingVarColId *var_colid_mapping)
+	const Expr *expr, const CMappingVarColId *var_colid_mapping __attribute__ ((unused)))
 {
 	GPOS_ASSERT(IsA(expr, SortGroupClause));
 	const SortGroupClause *sgc = (SortGroupClause *) expr;

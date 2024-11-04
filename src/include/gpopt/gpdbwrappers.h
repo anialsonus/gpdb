@@ -14,19 +14,7 @@
 //---------------------------------------------------------------------------
 #ifndef GPDB_gpdbwrappers_H
 #define GPDB_gpdbwrappers_H
-
-extern "C" {
-#include "postgres.h"
-
-#include "access/amapi.h"
-#include "access/attnum.h"
-#include "optimizer/plancat.h"
-#include "parser/parse_coerce.h"
-#include "statistics/statistics.h"
-#include "utils/faultinjector.h"
-#include "utils/lsyscache.h"
-}
-
+#include "gpopt/utils/gpdbdefs.h"
 #include "gpos/types.h"
 
 // fwd declarations
@@ -719,7 +707,8 @@ gpos::BOOL WalkQueryTree(Query *query, bool (*walker)(), void *context,
 		 : gpdb::MemCtxtAllocZero(CurrentMemoryContext, (sz)))
 
 #ifdef __GNUC__
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 /* With GCC, we can use a compound statement within an expression */
 #define NewNode(size, tag)                                                \
 	({                                                                    \
@@ -730,6 +719,7 @@ gpos::BOOL WalkQueryTree(Query *query, bool (*walker)(), void *context,
 		_result;                                                          \
 	})
 #else
+#pragma GCC diagnostic pop
 
 /*
  *	There is no way to dereference the palloc'ed pointer to assign the

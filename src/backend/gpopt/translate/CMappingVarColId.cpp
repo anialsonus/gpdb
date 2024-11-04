@@ -12,12 +12,8 @@
 //
 //
 //---------------------------------------------------------------------------
-extern "C" {
-#include "postgres.h"
+#include "gpopt/utils/gpdbdefs.h"
 
-#include "nodes/primnodes.h"
-#include "nodes/value.h"
-}
 #include "gpos/error/CAutoTrace.h"
 
 #include "gpopt/gpdbwrappers.h"

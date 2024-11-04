@@ -10,14 +10,7 @@
 // 		PartPruningSteps from partitioning filter expressions
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/parsenodes.h"
-#include "partitioning/partdesc.h"
-#include "utils/partcache.h"
-#include "utils/rel.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpopt/gpdbwrappers.h"
 #include "gpopt/translate/CPartPruneStepsBuilder.h"

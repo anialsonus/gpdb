@@ -12,30 +12,7 @@
 //
 //
 //---------------------------------------------------------------------------
-
-extern "C" {
-#include "postgres.h"
-
-#include "access/heapam.h"
-#include "catalog/heap.h"
-#include "catalog/namespace.h"
-#include "catalog/pg_am.h"
-#include "catalog/pg_proc.h"
-#include "catalog/pg_statistic.h"
-#include "catalog/pg_statistic_ext.h"
-#include "cdb/cdbhash.h"
-#include "partitioning/partdesc.h"
-#include "utils/array.h"
-#include "utils/datum.h"
-#include "utils/elog.h"
-#include "utils/guc.h"
-#include "utils/lsyscache.h"
-#include "utils/partcache.h"
-#include "utils/rel.h"
-#include "utils/relcache.h"
-#include "utils/syscache.h"
-#include "utils/typcache.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpos/base.h"
 #include "gpos/common/CAutoRef.h"
@@ -684,7 +661,7 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 //---------------------------------------------------------------------------
 CMDColumnArray *
 CTranslatorRelcacheToDXL::RetrieveRelColumns(CMemoryPool *mp,
-											 CMDAccessor *md_accessor,
+											 CMDAccessor *md_accessor __attribute__ ((unused)),
 											 Relation rel)
 {
 	CMDColumnArray *mdcol_array = GPOS_NEW(mp) CMDColumnArray(mp);
@@ -908,7 +885,7 @@ CTranslatorRelcacheToDXL::RetrieveRelDistributionOpFamilies(CMemoryPool *mp,
 void
 CTranslatorRelcacheToDXL::AddSystemColumns(CMemoryPool *mp,
 										   CMDColumnArray *mdcol_array,
-										   Relation rel)
+										   Relation rel __attribute__ ((unused)))
 {
 	for (INT i = SelfItemPointerAttributeNumber;
 		 i > FirstLowInvalidHeapAttributeNumber; i--)
@@ -2636,7 +2613,8 @@ CTranslatorRelcacheToDXL::RetrieveRelStorageType(Relation rel)
 //---------------------------------------------------------------------------
 void
 CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(CMemoryPool *mp,
-												   Relation rel, OID oid,
+												   Relation rel,
+												   OID oid __attribute__ ((unused)),
 												   ULongPtrArray **part_keys,
 												   CharPtrArray **part_types)
 {

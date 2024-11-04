@@ -11,11 +11,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "utils/memutils.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpopt/utils/CMemoryPoolPalloc.h"
 #include "gpopt/utils/CMemoryPoolPallocManager.h"

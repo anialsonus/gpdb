@@ -13,9 +13,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 #include "gpopt/translate/CDXLTranslateContextBaseTable.h"
 
 using namespace gpdxl;

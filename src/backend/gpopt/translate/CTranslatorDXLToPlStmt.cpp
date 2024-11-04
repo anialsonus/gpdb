@@ -14,27 +14,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "catalog/gp_distribution_policy.h"
-#include "catalog/pg_collation.h"
-#include "cdb/cdbutil.h"
-#include "cdb/cdbvars.h"
-#include "executor/execPartition.h"
-#include "executor/executor.h"
-#include "nodes/nodes.h"
-#include "nodes/plannodes.h"
-#include "nodes/primnodes.h"
-#include "partitioning/partdesc.h"
-#include "storage/lmgr.h"
-#include "utils/guc.h"
-#include "utils/lsyscache.h"
-#include "utils/partcache.h"
-#include "utils/rel.h"
-#include "utils/typcache.h"
-#include "utils/uri.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include <algorithm>
 #include <limits>  // std::numeric_limits
@@ -104,7 +84,8 @@ extern "C" {
 #include "naucrates/md/IMDTypeInt4.h"
 #include "naucrates/traceflags/traceflags.h"
 
-#include "nodes/nodeFuncs.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 
 using namespace gpdxl;
 using namespace gpos;
@@ -612,7 +593,7 @@ CTranslatorDXLToPlStmt::TranslateJoinPruneParamids(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLTblScan(
 	const CDXLNode *tbl_scan_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings)
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
 {
 	// translate table descriptor into a range table entry
 	CDXLPhysicalTableScan *phy_tbl_scan_dxlop =
@@ -1110,7 +1091,8 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexFilter(
 //---------------------------------------------------------------------------
 void
 CTranslatorDXLToPlStmt::TranslateIndexConditions(
-	CDXLNode *index_cond_list_dxlnode, const CDXLTableDescr *dxl_tbl_descr,
+	CDXLNode *index_cond_list_dxlnode,
+	const CDXLTableDescr *dxl_tbl_descr __attribute__ ((unused)),
 	BOOL is_bitmap_index_probe, const IMDIndex *index,
 	const IMDRelation *md_rel, CDXLTranslateContext *output_context,
 	CDXLTranslateContextBaseTable *base_table_context,
@@ -1637,7 +1619,7 @@ CTranslatorDXLToPlStmt::TranslateDXLHashJoin(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLTvf(
 	const CDXLNode *tvf_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings)
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
 {
 	// translation context for column mappings
 	CDXLTranslateContextBaseTable base_table_context(m_mp);
@@ -3409,7 +3391,7 @@ CTranslatorDXLToPlStmt::TranslateDXLProjectSet(const CDXLNode *result_dxlnode)
 Plan *
 CTranslatorDXLToPlStmt::CreateProjectSetNodeTree(const CDXLNode *result_dxlnode,
 												 Plan *result_node_plan,
-												 Plan *child_plan,
+												 Plan *child_plan __attribute__ ((unused)),
 												 Plan *&project_set_child_plan,
 												 BOOL &will_require_result_node)
 {
@@ -4100,7 +4082,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEProducerToSharedScan(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLCTEConsumerToSharedScan(
 	const CDXLNode *cte_consumer_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings)
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
 {
 	CDXLPhysicalCTEConsumer *cte_consumer_dxlop =
 		CDXLPhysicalCTEConsumer::Cast(cte_consumer_dxlnode->GetOperator());
@@ -4231,7 +4213,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSequence(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLDynTblScan(
 	const CDXLNode *dyn_tbl_scan_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings)
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
 {
 	// translate table descriptor into a range table entry
 	CDXLPhysicalDynamicTableScan *dyn_tbl_scan_dxlop =
@@ -4516,7 +4498,7 @@ Plan *
 CTranslatorDXLToPlStmt::TranslateDXLDynForeignScan(
 	const CDXLNode *dyn_foreign_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings)
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
 {
 	// translate table descriptor into a range table entry
 	CDXLPhysicalDynamicForeignScan *dyn_foreign_scan_dxlop =
@@ -5199,8 +5181,7 @@ CTranslatorDXLToPlStmt::ProcessDXLTblDescr(
 	}
 
 	ULONG acl_mode = table_descr->GetAclMode();
-	GPOS_ASSERT(acl_mode >= 0 &&
-				acl_mode <= std::numeric_limits<AclMode>::max());
+	GPOS_ASSERT(acl_mode <= std::numeric_limits<AclMode>::max());
 	AclMode required_perms = static_cast<AclMode>(acl_mode);
 
 	// descriptor was already processed, and translated RTE is stored at
@@ -6327,7 +6308,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToIntoClause(
 //---------------------------------------------------------------------------
 GpPolicy *
 CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToDistrPolicy(
-	const CDXLPhysicalCTAS *dxlop, List *target_list)
+	const CDXLPhysicalCTAS *dxlop, List *target_list __attribute__ ((unused)))
 {
 	ULongPtrArray *distr_col_pos_array = dxlop->GetDistrColPosArray();
 
@@ -6723,7 +6704,7 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapIndexProbe(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLValueScan(
 	const CDXLNode *value_scan_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings)
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
 {
 	// translation context for column mappings
 	CDXLTranslateContextBaseTable base_table_context(m_mp);
@@ -6826,4 +6807,7 @@ CTranslatorDXLToPlStmt::IsIndexForOrderBy(
 	}
 	return false;
 }
+
+#pragma GCC diagnostic pop
+
 // EOF

@@ -14,19 +14,7 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "access/sysattr.h"
-#include "catalog/pg_proc.h"
-#include "catalog/pg_statistic.h"
-#include "catalog/pg_type.h"
-#include "nodes/parsenodes.h"
-#include "nodes/plannodes.h"
-#include "optimizer/walkers.h"
-#include "utils/guc.h"
-#include "utils/rel.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpos/attributes.h"
 #include "gpos/base.h"

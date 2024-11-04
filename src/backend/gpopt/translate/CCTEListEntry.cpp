@@ -13,12 +13,7 @@
 //
 //
 //---------------------------------------------------------------------------
-
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/parsenodes.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 #include "gpos/base.h"
 
 #include "gpopt/gpdbwrappers.h"

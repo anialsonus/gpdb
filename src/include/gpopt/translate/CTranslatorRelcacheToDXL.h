@@ -19,15 +19,7 @@
 #define GPDXL_CTranslatorRelcacheToDXL_H
 
 #include "gpos/base.h"
-
-extern "C" {
-#include "postgres.h"
-
-#include "access/tupdesc.h"
-#include "catalog/gp_distribution_policy.h"
-#include "foreign/foreign.h"
-}
-
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/gpdb_types.h"
 #include "naucrates/dxl/operators/CDXLColDescr.h"
 #include "naucrates/md/CDXLColStats.h"

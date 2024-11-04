@@ -17,11 +17,7 @@
 #ifndef GPDXL_CDXLTranslateContext_H
 #define GPDXL_CDXLTranslateContext_H
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/plannodes.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpos/base.h"
 #include "gpos/common/CHashMap.h"

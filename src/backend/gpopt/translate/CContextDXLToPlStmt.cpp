@@ -15,14 +15,7 @@
 //
 //
 //---------------------------------------------------------------------------
-
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/parsenodes.h"
-#include "nodes/plannodes.h"
-#include "utils/rel.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpos/base.h"
 

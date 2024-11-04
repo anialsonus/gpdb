@@ -12,17 +12,7 @@
 //	@test:
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include "postgres.h"
-
-#include "catalog/pg_collation.h"
-#include "nodes/makefuncs.h"
-#include "nodes/nodes.h"
-#include "nodes/parsenodes.h"
-#include "nodes/plannodes.h"
-#include "nodes/primnodes.h"
-#include "utils/datum.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include <vector>
 
@@ -439,7 +429,7 @@ CTranslatorDXLToScalar::TranslateDXLScalarOpExprToScalar(
 //---------------------------------------------------------------------------
 Expr *
 CTranslatorDXLToScalar::TranslateDXLScalarParamToScalar(
-	const CDXLNode *scalar_param_node, CMappingColIdVar *colid_var)
+	const CDXLNode *scalar_param_node, CMappingColIdVar *colid_var __attribute__ ((unused)))
 {
 	GPOS_ASSERT(nullptr != scalar_param_node);
 	CDXLScalarParam *scalar_param_dxl =

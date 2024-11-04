@@ -15,13 +15,7 @@
 
 #include <sys/stat.h>
 
-extern "C" {
-#include "postgres.h"
-
-#include "fmgr.h"
-#include "lib/stringinfo.h"
-#include "utils/builtins.h"
-}
+#include "gpopt/utils/gpdbdefs.h"
 
 #include "gpos/_api.h"
 
