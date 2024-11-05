@@ -5369,7 +5369,7 @@ CTranslatorDXLToPlStmt::TranslateDXLProjList(
 		target_entry->resname =
 			CTranslatorUtils::CreateMultiByteCharStringFromWCString(
 				sc_proj_elem_dxlop->GetMdNameAlias()->GetMDName()->GetBuffer());
-		target_entry->resno = (AttrNumber) (ul + 1);
+		target_entry->resno = (AttrNumber)(ul + 1);
 
 		if (IsA(expr, Var))
 		{
