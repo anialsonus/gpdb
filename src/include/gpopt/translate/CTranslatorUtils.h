@@ -16,12 +16,11 @@
 #ifndef GPDXL_CTranslatorUtils_H
 #define GPDXL_CTranslatorUtils_H
 #define GPDXL_SYSTEM_COLUMNS 8
-#include "gpopt/utils/gpdbdefs.h"
-
 #include "gpos/base.h"
 #include "gpos/common/CBitSet.h"
 
 #include "gpopt/translate/CMappingVarColId.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CIdGenerator.h"
 #include "naucrates/dxl/operators/CDXLIndexDescr.h"
 #include "naucrates/dxl/operators/CDXLLogicalSetOp.h"

@@ -15,12 +15,12 @@
 //
 //
 //---------------------------------------------------------------------------
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CContextDXLToPlStmt.h"
 
 #include "gpos/base.h"
 
 #include "gpopt/gpdbwrappers.h"
-#include "gpopt/translate/CContextDXLToPlStmt.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/exception.h"
 
 using namespace gpdxl;

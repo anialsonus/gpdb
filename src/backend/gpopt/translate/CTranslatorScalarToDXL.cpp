@@ -13,7 +13,7 @@
 //
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CTranslatorScalarToDXL.h"
 
 #include <vector>
 
@@ -26,8 +26,8 @@
 #include "gpopt/mdcache/CMDAccessor.h"
 #include "gpopt/translate/CCTEListEntry.h"
 #include "gpopt/translate/CTranslatorQueryToDXL.h"
-#include "gpopt/translate/CTranslatorScalarToDXL.h"
 #include "gpopt/translate/CTranslatorUtils.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CDXLUtils.h"
 #include "naucrates/dxl/operators/CDXLDatumBool.h"
 #include "naucrates/dxl/operators/CDXLDatumInt2.h"
@@ -265,7 +265,8 @@ CTranslatorScalarToDXL::TranslateVarToDXL(
 //---------------------------------------------------------------------------
 CDXLNode *
 CTranslatorScalarToDXL::TranslateParamToDXL(
-	const Expr *expr, const CMappingVarColId *var_colid_mapping __attribute__ ((unused)))
+	const Expr *expr,
+	const CMappingVarColId *var_colid_mapping __attribute__((unused)))
 {
 	GPOS_ASSERT(IsA(expr, Param));
 	const Param *param = (Param *) expr;
@@ -2162,7 +2163,8 @@ CTranslatorScalarToDXL::TranslateArrayRefToDXL(
 
 CDXLNode *
 CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(
-	const Expr *expr, const CMappingVarColId *var_colid_mapping __attribute__ ((unused)))
+	const Expr *expr,
+	const CMappingVarColId *var_colid_mapping __attribute__((unused)))
 {
 	GPOS_ASSERT(IsA(expr, SortGroupClause));
 	const SortGroupClause *sgc = (SortGroupClause *) expr;

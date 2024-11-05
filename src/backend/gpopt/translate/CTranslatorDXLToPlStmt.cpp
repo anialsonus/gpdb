@@ -14,7 +14,7 @@
 //
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CTranslatorDXLToPlStmt.h"
 
 #include <algorithm>
 #include <limits>  // std::numeric_limits
@@ -30,8 +30,8 @@
 #include "gpopt/mdcache/CMDAccessor.h"
 #include "gpopt/translate/CIndexQualInfo.h"
 #include "gpopt/translate/CPartPruneStepsBuilder.h"
-#include "gpopt/translate/CTranslatorDXLToPlStmt.h"
 #include "gpopt/translate/CTranslatorUtils.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/operators/CDXLDatumGeneric.h"
 #include "naucrates/dxl/operators/CDXLDirectDispatchInfo.h"
 #include "naucrates/dxl/operators/CDXLNode.h"
@@ -593,7 +593,8 @@ CTranslatorDXLToPlStmt::TranslateJoinPruneParamids(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLTblScan(
 	const CDXLNode *tbl_scan_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
+	__attribute__((unused)))
 {
 	// translate table descriptor into a range table entry
 	CDXLPhysicalTableScan *phy_tbl_scan_dxlop =
@@ -1092,7 +1093,7 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexFilter(
 void
 CTranslatorDXLToPlStmt::TranslateIndexConditions(
 	CDXLNode *index_cond_list_dxlnode,
-	const CDXLTableDescr *dxl_tbl_descr __attribute__ ((unused)),
+	const CDXLTableDescr *dxl_tbl_descr __attribute__((unused)),
 	BOOL is_bitmap_index_probe, const IMDIndex *index,
 	const IMDRelation *md_rel, CDXLTranslateContext *output_context,
 	CDXLTranslateContextBaseTable *base_table_context,
@@ -1619,7 +1620,8 @@ CTranslatorDXLToPlStmt::TranslateDXLHashJoin(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLTvf(
 	const CDXLNode *tvf_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
+	__attribute__((unused)))
 {
 	// translation context for column mappings
 	CDXLTranslateContextBaseTable base_table_context(m_mp);
@@ -3391,7 +3393,8 @@ CTranslatorDXLToPlStmt::TranslateDXLProjectSet(const CDXLNode *result_dxlnode)
 Plan *
 CTranslatorDXLToPlStmt::CreateProjectSetNodeTree(const CDXLNode *result_dxlnode,
 												 Plan *result_node_plan,
-												 Plan *child_plan __attribute__ ((unused)),
+												 Plan *child_plan
+												 __attribute__((unused)),
 												 Plan *&project_set_child_plan,
 												 BOOL &will_require_result_node)
 {
@@ -4082,7 +4085,8 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEProducerToSharedScan(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLCTEConsumerToSharedScan(
 	const CDXLNode *cte_consumer_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
+	__attribute__((unused)))
 {
 	CDXLPhysicalCTEConsumer *cte_consumer_dxlop =
 		CDXLPhysicalCTEConsumer::Cast(cte_consumer_dxlnode->GetOperator());
@@ -4213,7 +4217,8 @@ CTranslatorDXLToPlStmt::TranslateDXLSequence(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLDynTblScan(
 	const CDXLNode *dyn_tbl_scan_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
+	__attribute__((unused)))
 {
 	// translate table descriptor into a range table entry
 	CDXLPhysicalDynamicTableScan *dyn_tbl_scan_dxlop =
@@ -4498,7 +4503,8 @@ Plan *
 CTranslatorDXLToPlStmt::TranslateDXLDynForeignScan(
 	const CDXLNode *dyn_foreign_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
+	__attribute__((unused)))
 {
 	// translate table descriptor into a range table entry
 	CDXLPhysicalDynamicForeignScan *dyn_foreign_scan_dxlop =
@@ -5363,7 +5369,7 @@ CTranslatorDXLToPlStmt::TranslateDXLProjList(
 		target_entry->resname =
 			CTranslatorUtils::CreateMultiByteCharStringFromWCString(
 				sc_proj_elem_dxlop->GetMdNameAlias()->GetMDName()->GetBuffer());
-		target_entry->resno = (AttrNumber)(ul + 1);
+		target_entry->resno = (AttrNumber) (ul + 1);
 
 		if (IsA(expr, Var))
 		{
@@ -6308,7 +6314,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToIntoClause(
 //---------------------------------------------------------------------------
 GpPolicy *
 CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToDistrPolicy(
-	const CDXLPhysicalCTAS *dxlop, List *target_list __attribute__ ((unused)))
+	const CDXLPhysicalCTAS *dxlop, List *target_list __attribute__((unused)))
 {
 	ULongPtrArray *distr_col_pos_array = dxlop->GetDistrColPosArray();
 
@@ -6704,7 +6710,8 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapIndexProbe(
 Plan *
 CTranslatorDXLToPlStmt::TranslateDXLValueScan(
 	const CDXLNode *value_scan_dxlnode, CDXLTranslateContext *output_context,
-	CDXLTranslationContextArray *ctxt_translation_prev_siblings __attribute__ ((unused)))
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
+	__attribute__((unused)))
 {
 	// translation context for column mappings
 	CDXLTranslateContextBaseTable base_table_context(m_mp);

@@ -13,11 +13,12 @@
 //
 //
 //---------------------------------------------------------------------------
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CCTEListEntry.h"
+
 #include "gpos/base.h"
 
 #include "gpopt/gpdbwrappers.h"
-#include "gpopt/translate/CCTEListEntry.h"
+#include "gpopt/utils/gpdbdefs.h"
 using namespace gpdxl;
 
 //---------------------------------------------------------------------------

@@ -16,10 +16,6 @@
 #ifndef GPDXL_CTranslatorDxlToPlStmt_H
 #define GPDXL_CTranslatorDxlToPlStmt_H
 
-extern "C" {
-#include "postgres.h"
-}
-
 #include "gpos/base.h"
 
 #include "gpopt/translate/CContextDXLToPlStmt.h"
@@ -27,6 +23,7 @@ extern "C" {
 #include "gpopt/translate/CDXLTranslateContextBaseTable.h"
 #include "gpopt/translate/CMappingColIdVarPlStmt.h"
 #include "gpopt/translate/CTranslatorDXLToScalar.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CIdGenerator.h"
 #include "naucrates/dxl/operators/CDXLCtasStorageOptions.h"
 #include "naucrates/dxl/operators/CDXLPhysicalIndexScan.h"

@@ -10,10 +10,10 @@
 // 		PartPruningSteps from partitioning filter expressions
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CPartPruneStepsBuilder.h"
 
 #include "gpopt/gpdbwrappers.h"
-#include "gpopt/translate/CPartPruneStepsBuilder.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/operators/CDXLScalarBoolExpr.h"
 #include "naucrates/dxl/operators/CDXLScalarCast.h"
 #include "naucrates/dxl/operators/CDXLScalarComp.h"

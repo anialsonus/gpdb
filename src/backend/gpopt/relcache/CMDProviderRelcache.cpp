@@ -13,10 +13,11 @@
 //
 //
 //---------------------------------------------------------------------------
-#include "gpopt/utils/gpdbdefs.h"
-#include "gpopt/mdcache/CMDAccessor.h"
 #include "gpopt/relcache/CMDProviderRelcache.h"
+
+#include "gpopt/mdcache/CMDAccessor.h"
 #include "gpopt/translate/CTranslatorRelcacheToDXL.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CDXLUtils.h"
 #include "naucrates/exception.h"
 
@@ -25,9 +26,10 @@ using namespace gpdxl;
 using namespace gpmd;
 
 CWStringBase *
-CMDProviderRelcache::GetMDObjDXLStr(CMemoryPool *mp __attribute__ ((unused)),
-									CMDAccessor *md_accessor __attribute__ ((unused)),
-									IMDId *md_id __attribute__ ((unused))) const
+CMDProviderRelcache::GetMDObjDXLStr(CMemoryPool *mp __attribute__((unused)),
+									CMDAccessor *md_accessor
+									__attribute__((unused)),
+									IMDId *md_id __attribute__((unused))) const
 {
 	// not used
 	return nullptr;

@@ -15,8 +15,10 @@
 
 #ifndef GPDBDefs_H
 #define GPDBDefs_H
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+
 extern "C" {
 
 #include "postgres.h"
@@ -29,10 +31,10 @@ extern "C" {
 #include "nodes/nodes.h"
 #include "nodes/pg_list.h"
 #include "nodes/plannodes.h"
-#include "optimizer/walkers.h"
 #include "optimizer/hints.h"
 #include "optimizer/orca.h"
 #include "optimizer/plancat.h"
+#include "optimizer/walkers.h"
 #include "parser/parse_clause.h"
 #include "parser/parse_expr.h"
 #include "parser/parse_oper.h"

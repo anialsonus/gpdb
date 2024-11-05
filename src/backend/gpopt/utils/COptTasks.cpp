@@ -15,8 +15,6 @@
 
 #include "gpopt/utils/COptTasks.h"
 
-#include "gpopt/utils/gpdbdefs.h"
-
 #include "gpos/_api.h"
 #include "gpos/base.h"
 #include "gpos/common/CAutoP.h"

@@ -14,8 +14,9 @@
 //---------------------------------------------------------------------------
 #ifndef GPDB_gpdbwrappers_H
 #define GPDB_gpdbwrappers_H
-#include "gpopt/utils/gpdbdefs.h"
 #include "gpos/types.h"
+
+#include "gpopt/utils/gpdbdefs.h"
 
 // fwd declarations
 using SysScanDesc = struct SysScanDescData *;

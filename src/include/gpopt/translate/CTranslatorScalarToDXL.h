@@ -18,15 +18,10 @@
 
 #include "gpos/base.h"
 
-extern "C" {
-#include "postgres.h"
-
-#include "nodes/primnodes.h"
-}
-
 #include "gpopt/translate/CCTEListEntry.h"
 #include "gpopt/translate/CContextQueryToDXL.h"
 #include "gpopt/translate/CMappingVarColId.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/base/IDatum.h"
 #include "naucrates/dxl/operators/CDXLScalarArrayRefIndexList.h"
 #include "naucrates/dxl/operators/CDXLScalarBoolExpr.h"

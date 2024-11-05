@@ -2301,16 +2301,17 @@ static int64 mdcache_invalidation_counter = 0;
 static int64 last_mdcache_invalidation_counter = 0;
 
 static void
-mdsyscache_invalidation_counter_callback(Datum arg __attribute__ ((unused)),
-										 int cacheid __attribute__ ((unused)),
-										 uint32 hashvalue __attribute__ ((unused)))
+mdsyscache_invalidation_counter_callback(Datum arg __attribute__((unused)),
+										 int cacheid __attribute__((unused)),
+										 uint32 hashvalue
+										 __attribute__((unused)))
 {
 	mdcache_invalidation_counter++;
 }
 
 static void
-mdrelcache_invalidation_counter_callback(Datum arg __attribute__ ((unused)),
-										 Oid relid __attribute__ ((unused)))
+mdrelcache_invalidation_counter_callback(Datum arg __attribute__((unused)),
+										 Oid relid __attribute__((unused)))
 {
 	mdcache_invalidation_counter++;
 }

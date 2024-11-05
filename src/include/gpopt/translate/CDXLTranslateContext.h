@@ -17,13 +17,12 @@
 #ifndef GPDXL_CDXLTranslateContext_H
 #define GPDXL_CDXLTranslateContext_H
 
-#include "gpopt/utils/gpdbdefs.h"
-
 #include "gpos/base.h"
 #include "gpos/common/CHashMap.h"
 #include "gpos/common/CHashMapIter.h"
 
 #include "gpopt/translate/CMappingElementColIdParamId.h"
+#include "gpopt/utils/gpdbdefs.h"
 
 
 // fwd decl

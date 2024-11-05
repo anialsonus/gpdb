@@ -13,15 +13,14 @@
 //
 //---------------------------------------------------------------------------
 
-#include <sys/stat.h>
+#include "gpopt/utils/funcs.h"
 
-#include "gpopt/utils/gpdbdefs.h"
+#include <sys/stat.h>
 
 #include "gpos/_api.h"
 
 #include "gpopt/gpdbwrappers.h"
 #include "gpopt/utils/COptTasks.h"
-#include "gpopt/utils/funcs.h"
 
 #include "xercesc/util/XercesVersion.hpp"
 

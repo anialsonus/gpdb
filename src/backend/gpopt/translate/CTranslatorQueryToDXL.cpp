@@ -14,7 +14,7 @@
 //
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CTranslatorQueryToDXL.h"
 
 #include "gpos/base.h"
 #include "gpos/common/CAutoTimer.h"
@@ -25,9 +25,9 @@
 #include "gpopt/translate/CCTEListEntry.h"
 #include "gpopt/translate/CQueryMutators.h"
 #include "gpopt/translate/CTranslatorDXLToPlStmt.h"
-#include "gpopt/translate/CTranslatorQueryToDXL.h"
 #include "gpopt/translate/CTranslatorRelcacheToDXL.h"
 #include "gpopt/translate/CTranslatorUtils.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CDXLUtils.h"
 #include "naucrates/dxl/operators/CDXLDatumInt4.h"
 #include "naucrates/dxl/operators/CDXLDatumInt8.h"
@@ -1778,7 +1778,7 @@ CTranslatorQueryToDXL::TranslateWindowSpecToDXL(
 CDXLNode *
 CTranslatorQueryToDXL::TranslateWindowToDXL(
 	CDXLNode *child_dxlnode, List *target_list, List *window_clause,
-	List *sort_clause __attribute__ ((unused)),
+	List *sort_clause __attribute__((unused)),
 	IntToUlongMap *sort_col_attno_to_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping)
 {
@@ -3636,7 +3636,8 @@ CTranslatorQueryToDXL::NoteDistributionPolicyOpclasses(const RangeTblEntry *rte)
 CDXLNode *
 CTranslatorQueryToDXL::TranslateValueScanRTEToDXL(const RangeTblEntry *rte,
 												  ULONG rt_index,
-												  ULONG current_query_level __attribute__ ((unused)))
+												  ULONG current_query_level
+												  __attribute__((unused)))
 {
 	List *tuples_list = rte->values_lists;
 	GPOS_ASSERT(nullptr != tuples_list);

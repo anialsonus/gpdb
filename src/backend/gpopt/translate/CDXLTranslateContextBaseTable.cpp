@@ -13,8 +13,9 @@
 //
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
 #include "gpopt/translate/CDXLTranslateContextBaseTable.h"
+
+#include "gpopt/utils/gpdbdefs.h"
 
 using namespace gpdxl;
 using namespace gpos;

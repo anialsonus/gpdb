@@ -14,9 +14,9 @@
 //
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
-
 #include "gpopt/translate/CMappingElementColIdParamId.h"
+
+#include "gpopt/utils/gpdbdefs.h"
 
 using namespace gpdxl;
 using namespace gpos;

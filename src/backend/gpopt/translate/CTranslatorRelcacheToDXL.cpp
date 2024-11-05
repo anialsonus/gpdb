@@ -12,7 +12,7 @@
 //
 //
 //---------------------------------------------------------------------------
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CTranslatorRelcacheToDXL.h"
 
 #include "gpos/base.h"
 #include "gpos/common/CAutoRef.h"
@@ -22,9 +22,9 @@
 #include "gpopt/base/CUtils.h"
 #include "gpopt/gpdbwrappers.h"
 #include "gpopt/mdcache/CMDAccessor.h"
-#include "gpopt/translate/CTranslatorRelcacheToDXL.h"
 #include "gpopt/translate/CTranslatorScalarToDXL.h"
 #include "gpopt/translate/CTranslatorUtils.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CDXLUtils.h"
 #include "naucrates/dxl/gpdb_types.h"
 #include "naucrates/dxl/xml/dxltokens.h"
@@ -661,7 +661,8 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 //---------------------------------------------------------------------------
 CMDColumnArray *
 CTranslatorRelcacheToDXL::RetrieveRelColumns(CMemoryPool *mp,
-											 CMDAccessor *md_accessor __attribute__ ((unused)),
+											 CMDAccessor *md_accessor
+											 __attribute__((unused)),
 											 Relation rel)
 {
 	CMDColumnArray *mdcol_array = GPOS_NEW(mp) CMDColumnArray(mp);
@@ -885,7 +886,7 @@ CTranslatorRelcacheToDXL::RetrieveRelDistributionOpFamilies(CMemoryPool *mp,
 void
 CTranslatorRelcacheToDXL::AddSystemColumns(CMemoryPool *mp,
 										   CMDColumnArray *mdcol_array,
-										   Relation rel __attribute__ ((unused)))
+										   Relation rel __attribute__((unused)))
 {
 	for (INT i = SelfItemPointerAttributeNumber;
 		 i > FirstLowInvalidHeapAttributeNumber; i--)
@@ -1154,7 +1155,7 @@ CTranslatorRelcacheToDXL::PopulateAttnoPositionMap(CMemoryPool *mp,
 
 		INT attno = md_col->AttrNum();
 
-		ULONG idx = (ULONG)(GPDXL_SYSTEM_COLUMNS + attno);
+		ULONG idx = (ULONG) (GPDXL_SYSTEM_COLUMNS + attno);
 		GPOS_ASSERT(size > idx);
 		attno_mapping[idx] = ul;
 	}
@@ -2612,11 +2613,9 @@ CTranslatorRelcacheToDXL::RetrieveRelStorageType(Relation rel)
 //
 //---------------------------------------------------------------------------
 void
-CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(CMemoryPool *mp,
-												   Relation rel,
-												   OID oid __attribute__ ((unused)),
-												   ULongPtrArray **part_keys,
-												   CharPtrArray **part_types)
+CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(
+	CMemoryPool *mp, Relation rel, OID oid __attribute__((unused)),
+	ULongPtrArray **part_keys, CharPtrArray **part_types)
 {
 	GPOS_ASSERT(nullptr != rel);
 

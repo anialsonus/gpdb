@@ -12,7 +12,7 @@
 //	@test:
 //---------------------------------------------------------------------------
 
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CTranslatorDXLToScalar.h"
 
 #include <vector>
 
@@ -24,8 +24,8 @@
 #include "gpopt/mdcache/CMDAccessorUtils.h"
 #include "gpopt/translate/CMappingColIdVarPlStmt.h"
 #include "gpopt/translate/CTranslatorDXLToPlStmt.h"
-#include "gpopt/translate/CTranslatorDXLToScalar.h"
 #include "gpopt/translate/CTranslatorUtils.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/CDXLUtils.h"
 #include "naucrates/dxl/operators/CDXLDatumBool.h"
 #include "naucrates/dxl/operators/CDXLDatumGeneric.h"
@@ -429,7 +429,8 @@ CTranslatorDXLToScalar::TranslateDXLScalarOpExprToScalar(
 //---------------------------------------------------------------------------
 Expr *
 CTranslatorDXLToScalar::TranslateDXLScalarParamToScalar(
-	const CDXLNode *scalar_param_node, CMappingColIdVar *colid_var __attribute__ ((unused)))
+	const CDXLNode *scalar_param_node,
+	CMappingColIdVar *colid_var __attribute__((unused)))
 {
 	GPOS_ASSERT(nullptr != scalar_param_node);
 	CDXLScalarParam *scalar_param_dxl =

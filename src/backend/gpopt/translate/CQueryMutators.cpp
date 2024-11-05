@@ -15,14 +15,14 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
-#include "gpopt/utils/gpdbdefs.h"
+#include "gpopt/translate/CQueryMutators.h"
 
 #include "gpopt/base/CUtils.h"
 #include "gpopt/gpdbwrappers.h"
 #include "gpopt/mdcache/CMDAccessor.h"
 #include "gpopt/mdcache/CMDAccessorUtils.h"
-#include "gpopt/translate/CQueryMutators.h"
 #include "gpopt/translate/CTranslatorDXLToPlStmt.h"
+#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/exception.h"
 #include "naucrates/md/IMDAggregate.h"
 #include "naucrates/md/IMDScalarOp.h"
@@ -1155,7 +1155,8 @@ CQueryMutators::MakeTopLevelTargetEntry(TargetEntry *old_target_entry,
 //		Return the column name of the target list entry
 //---------------------------------------------------------------------------
 CHAR *
-CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry, Query *query __attribute__ ((unused)))
+CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry,
+									  Query *query __attribute__((unused)))
 {
 	if (nullptr != target_entry->resname)
 	{
