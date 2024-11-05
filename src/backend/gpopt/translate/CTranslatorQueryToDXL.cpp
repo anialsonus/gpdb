@@ -4753,7 +4753,7 @@ CTranslatorQueryToDXL::CreateDXLConstValueTrue()
 CDXLNode *
 CTranslatorQueryToDXL::TranslateGroupingFuncToDXL(
 	const Expr *expr, CBitSet *bitset,
-	UlongToUlongMap *grpcol_index_to_colid_mapping) const
+	UlongToUlongMap *grpcol_index_to_colid_mapping __attribute__((unused))) const
 {
 	GPOS_ASSERT(IsA(expr, GroupingFunc));
 	GPOS_ASSERT(nullptr != grpcol_index_to_colid_mapping);
