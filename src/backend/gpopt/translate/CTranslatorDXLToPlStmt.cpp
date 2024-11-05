@@ -31,7 +31,6 @@
 #include "gpopt/translate/CIndexQualInfo.h"
 #include "gpopt/translate/CPartPruneStepsBuilder.h"
 #include "gpopt/translate/CTranslatorUtils.h"
-#include "gpopt/utils/gpdbdefs.h"
 #include "naucrates/dxl/operators/CDXLDatumGeneric.h"
 #include "naucrates/dxl/operators/CDXLDirectDispatchInfo.h"
 #include "naucrates/dxl/operators/CDXLNode.h"
