@@ -4876,11 +4876,10 @@ DatumStreamBlock_IntegrityCheckDenseDelta(
 	totalDeltasSize = 0;
 	for (i = 0; i < deltaExtension->deltas_count; i++)
 	{
-		int32		deltasCount;
 		int			byteLen;
 		bool		sign;
 
-		deltasCount = DatumStreamInt32CompressReserved3_Decode(p, &byteLen, &sign);
+		DatumStreamInt32CompressReserved3_Decode(p, &byteLen, &sign);
 		/* UNDONE: Range check repeatCount */
 
 		totalDeltasSize += byteLen;

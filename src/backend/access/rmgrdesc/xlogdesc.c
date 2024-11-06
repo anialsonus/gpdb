@@ -45,7 +45,9 @@ void
 UnpackCheckPointRecord(XLogReaderState *record, CheckpointExtendedRecord *ckptExtended)
 {
 	char *current_record_ptr;
+#ifdef USE_ASSERT_CHECKING
 	int remainderLen;
+#endif
 
 	if (XLogRecGetDataLen(record) == sizeof(CheckPoint))
 	{
@@ -59,7 +61,9 @@ UnpackCheckPointRecord(XLogReaderState *record, CheckpointExtendedRecord *ckptEx
 	Assert(XLogRecGetDataLen(record) > sizeof(CheckPoint));
 
 	current_record_ptr = ((char*)XLogRecGetData(record)) + sizeof(CheckPoint);
+#ifdef USE_ASSERT_CHECKING
 	remainderLen = XLogRecGetDataLen(record) - sizeof(CheckPoint);
+#endif
 
 	/* Start of distributed transaction information */
 	ckptExtended->dtxCheckpoint = (TMGXACT_CHECKPOINT *)current_record_ptr;

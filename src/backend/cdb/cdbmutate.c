@@ -543,7 +543,6 @@ static RangeTblEntry *
 create_shareinput_producer_rte(ApplyShareInputContext *ctxt, int share_id,
 							   int refno)
 {
-	int			attno = 1;
 	ListCell   *lc;
 	Plan	   *subplan;
 	char		buf[100];
@@ -583,7 +582,6 @@ create_shareinput_producer_rte(ApplyShareInputContext *ctxt, int share_id,
 		coltypes = lappend_oid(coltypes, vartype);
 		coltypmods = lappend_int(coltypmods, vartypmod);
 		colcollations = lappend_oid(colcollations, varcollid);
-		attno++;
 	}
 
 	/*

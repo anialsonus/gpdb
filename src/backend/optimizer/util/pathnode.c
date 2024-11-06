@@ -3230,8 +3230,10 @@ create_resultscan_path(PlannerInfo *root, RelOptInfo *rel,
 	pathnode->pathkeys = NIL;	/* result is always unordered */
 
 	{
+#ifdef USE_ASSERT_CHECKING
 		char		exec_location;
-		exec_location = check_execute_on_functions((Node *) rel->reltarget->exprs);
+		exec_location =	check_execute_on_functions((Node *) rel->reltarget->exprs);
+#endif
 
 		/*
 		 * A function with EXECUTE ON { COORDINATOR | ALL SEGMENTS } attribute

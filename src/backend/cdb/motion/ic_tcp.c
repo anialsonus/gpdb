@@ -1317,7 +1317,9 @@ SetupTCPInterconnect(EState *estate)
 	{
 		int			totalNumProcs;
 		int			childId = lfirst_int(cell);
+#ifdef ENABLE_IC_PROXY
 		ChunkTransportStateEntry *pEntry = NULL;
+#endif
 
 #ifdef AMS_VERBOSE_LOGGING
 		elog(DEBUG5, "Setting up RECEIVING motion node %d", childId);
@@ -1331,7 +1333,10 @@ SetupTCPInterconnect(EState *estate)
 		 */
 		totalNumProcs = list_length(aSlice->primaryProcesses);
 
-		pEntry = createChunkTransportState(interconnect_context, aSlice, mySlice, totalNumProcs);
+#ifdef ENABLE_IC_PROXY
+		pEntry =
+#endif
+			createChunkTransportState(interconnect_context, aSlice, mySlice, totalNumProcs);
 
 		for (i = 0; i < totalNumProcs; i++)
 		{

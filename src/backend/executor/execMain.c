@@ -608,7 +608,9 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 		 */
 		if (Gp_role == GP_ROLE_EXECUTE && estate->es_sliceTable != NULL)
 		{
+#ifdef USE_ASSERT_CHECKING
 			MotionState *motionstate = NULL;
+#endif
 
 			/*
 			 * Note that, at this point on a QE, the estate is setup (based on the
@@ -621,7 +623,9 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			 */
 			if (LocallyExecutingSliceIndex(estate) != RootSliceIndex(estate))
 			{
+#ifdef USE_ASSERT_CHECKING
 				motionstate = getMotionState(queryDesc->planstate, LocallyExecutingSliceIndex(estate));
+#endif
 				Assert(motionstate != NULL && IsA(motionstate, MotionState));
 			}
 
