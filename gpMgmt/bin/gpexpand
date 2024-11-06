@@ -843,7 +843,7 @@ class SegmentTemplate:
             segCfgCmd = ConfigureNewSegment(name='gpexpand configure new segments',
                                             confinfo=new_segment_info[host],
                                             logdir=get_logger_dir(),
-                                            tarFile=self.segTarFile, newSegments=True,
+                                            tarFile=os.path.realpath(self.segTarFile), newSegments=True,
                                             verbose=gplog.logging_is_verbose(), batchSize=self.batch_size,
                                             ctxt=REMOTE, remoteHost=host)
             self.pool.addCommand(segCfgCmd)
