@@ -18,6 +18,15 @@
 #ifndef GPDXL_CTranslatorRelcacheToDXL_H
 #define GPDXL_CTranslatorRelcacheToDXL_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
+extern "C" {
+#include "postgres.h"
+}
+
+#pragma GCC diagnostic pop
+
 #include "gpos/base.h"
 
 #include "gpopt/utils/gpdbdefs.h"
