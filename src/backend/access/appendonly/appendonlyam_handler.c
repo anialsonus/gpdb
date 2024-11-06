@@ -186,10 +186,15 @@ find_dml_state(const Oid relationOid)
 static inline void
 remove_dml_state(const Oid relationOid)
 {
+#ifdef USE_ASSERT_CHECKING
 	AppendOnlyDMLState *state;
+#endif
 	Assert(appendOnlyDMLStates.state_table);
 
-	state = (AppendOnlyDMLState *) hash_search(appendOnlyDMLStates.state_table,
+#ifdef USE_ASSERT_CHECKING
+	state = (AppendOnlyDMLState *)
+#endif
+		hash_search(appendOnlyDMLStates.state_table,
 											   &relationOid,
 											   HASH_REMOVE,
 											   NULL);
@@ -1606,8 +1611,10 @@ appendonly_index_build_range_scan(Relation heapRelation,
 							  TableScanDesc scan)
 {
 	AppendOnlyScanDesc aoscan;
+#ifdef USE_ASSERT_CHECKING
 	bool		is_system_catalog;
 	bool		checking_uniqueness;
+#endif
 	Datum		values[INDEX_MAX_KEYS];
 	bool		isnull[INDEX_MAX_KEYS];
 	double		reltuples;
@@ -1630,7 +1637,9 @@ appendonly_index_build_range_scan(Relation heapRelation,
 	Assert(OidIsValid(indexRelation->rd_rel->relam));
 
 	/* Remember if it's a system catalog */
+#ifdef USE_ASSERT_CHECKING
 	is_system_catalog = IsSystemRelation(heapRelation);
+#endif
 
 	/* Appendoptimized catalog tables are not supported. */
 	Assert(!is_system_catalog);
@@ -1638,9 +1647,11 @@ appendonly_index_build_range_scan(Relation heapRelation,
 	if (IS_QUERY_DISPATCHER())
 		return 0;
 
+#ifdef USE_ASSERT_CHECKING
 	/* See whether we're verifying uniqueness/exclusion properties */
 	checking_uniqueness = (indexInfo->ii_Unique ||
 						   indexInfo->ii_ExclusionOps != NULL);
+#endif
 
 	/*
 	 * "Any visible" mode is not compatible with uniqueness checks; make sure

@@ -2973,8 +2973,6 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 	ExecSlice  *mySlice;
 	ExecSlice  *aSlice;
 	MotionConn *conn = NULL;
-	int			incoming_count = 0;
-	int			outgoing_count = 0;
 	int			expectedTotalIncoming = 0;
 	int			expectedTotalOutgoing = 0;
 
@@ -3145,8 +3143,6 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 				conn->stillActive = true;
 				conn->remapper = CreateTupleRemapper();
 
-				incoming_count++;
-
 				conn->conn_info.motNodeId = pEntry->motNodeId;
 				conn->conn_info.recvSliceIndex = mySlice->sliceIndex;
 				conn->conn_info.sendSliceIndex = aSlice->sliceIndex;
@@ -3189,10 +3185,7 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 			conn = &sendingChunkTransportState->conns[i];
 
 			if (conn->cdbProc)
-			{
 				setupOutgoingUDPConnection(interconnect_context, sendingChunkTransportState, conn);
-				outgoing_count++;
-			}
 		}
 		snd_control_info.minCwnd = snd_control_info.cwnd;
 		snd_control_info.ssthresh = snd_buffer_pool.maxCount;

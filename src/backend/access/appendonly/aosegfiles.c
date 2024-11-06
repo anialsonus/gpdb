@@ -1574,7 +1574,9 @@ aorow_compression_ratio_internal(Relation parentrel)
 	StringInfoData sqlstmt;
 	Relation	aosegrel;
 	volatile bool		connected = false;
+#ifdef USE_ASSERT_CHECKING
 	int			proc;	/* 32 bit, only holds number of segments */
+#endif
 	int			ret;
 	float8		compress_ratio = -1;	/* the default, meaning "not
 										 * available" */
@@ -1611,7 +1613,9 @@ aorow_compression_ratio_internal(Relation parentrel)
 
 		/* Do the query. */
 		ret = SPI_execute(sqlstmt.data, false, 0);
+#ifdef USE_ASSERT_CHECKING
 		proc = (int) SPI_processed;
+#endif
 
 		if (ret > 0 && SPI_tuptable != NULL)
 		{

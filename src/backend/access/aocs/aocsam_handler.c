@@ -229,10 +229,15 @@ find_dml_state(const Oid relationOid)
 static inline void
 remove_dml_state(const Oid relationOid)
 {
+#ifdef USE_ASSERT_CHECKING
 	AOCODMLState *state;
+#endif
 	Assert(aocoDMLStates.state_table);
 
-	state = (AOCODMLState *) hash_search(aocoDMLStates.state_table,
+#ifdef USE_ASSERT_CHECKING
+	state = (AOCODMLState *)
+#endif
+		hash_search(aocoDMLStates.state_table,
 										 &relationOid,
 										 HASH_REMOVE,
 										 NULL);
@@ -1815,8 +1820,10 @@ aoco_index_build_range_scan(Relation heapRelation,
                                   TableScanDesc scan)
 {
 	AOCSScanDesc aocoscan;
+#ifdef USE_ASSERT_CHECKING
 	bool		is_system_catalog;
 	bool		checking_uniqueness;
+#endif
 	Datum		values[INDEX_MAX_KEYS];
 	bool		isnull[INDEX_MAX_KEYS];
 	double		reltuples;
@@ -1840,8 +1847,10 @@ aoco_index_build_range_scan(Relation heapRelation,
 	 */
 	Assert(OidIsValid(indexRelation->rd_rel->relam));
 
+#ifdef USE_ASSERT_CHECKING
 	/* Remember if it's a system catalog */
 	is_system_catalog = IsSystemRelation(heapRelation);
+#endif
 
 	/* Appendoptimized catalog tables are not supported. */
 	Assert(!is_system_catalog);
@@ -1849,6 +1858,7 @@ aoco_index_build_range_scan(Relation heapRelation,
 	if (IS_QUERY_DISPATCHER())
 		return 0;
 
+#ifdef USE_ASSERT_CHECKING
 	/* See whether we're verifying uniqueness/exclusion properties */
 	checking_uniqueness = (indexInfo->ii_Unique ||
 		indexInfo->ii_ExclusionOps != NULL);
@@ -1858,6 +1868,7 @@ aoco_index_build_range_scan(Relation heapRelation,
 	 * only one of those is requested.
 	 */
 	Assert(!(anyvisible && checking_uniqueness));
+#endif
 
 	/*
 	 * Need an EState for evaluation of index expressions and partial-index
@@ -2136,7 +2147,9 @@ aoco_index_build_range_scan(Relation heapRelation,
 			/* position every column to that rownum */
 			for (int colIdx = 0; colIdx < aocoscan->columnScanInfo.num_proj_atts; colIdx++)
 			{
+#ifdef USE_ASSERT_CHECKING
 				int 			err;
+#endif
 				AttrNumber		attno = aocoscan->columnScanInfo.proj_atts[colIdx];
 				int32 			rowNumInBlock;
 
@@ -2152,7 +2165,10 @@ aoco_index_build_range_scan(Relation heapRelation,
 								&& common_start_rownum <= dirEntries[colIdx].range.lastRowNum);
 
 				/* read the varblock we've just positioned to */
-				err = datumstreamread_block(aocoscan->columnScanInfo.ds[attno], NULL, attno);
+#ifdef USE_ASSERT_CHECKING
+				err =
+#endif
+					datumstreamread_block(aocoscan->columnScanInfo.ds[attno], NULL, attno);
 				Assert(err >= 0); /* since it's a valid block, we must be able to read it */
 
 				rowNumInBlock = common_start_rownum - dirEntries[colIdx].range.firstRowNum;

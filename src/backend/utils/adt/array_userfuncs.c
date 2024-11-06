@@ -966,15 +966,15 @@ array_int4_add(PG_FUNCTION_ARGS)
 						   ndims1, ndims2)));
 
 	/* get argument array details */
-	lbs1 = ARR_LBOUND(v1);
-	lbs2 = ARR_LBOUND(v2);
 	dims1 = ARR_DIMS(v1);
 	dims2 = ARR_DIMS(v2);
 	dat1 = ARR_DATA_PTR(v1);
 	dat2 = ARR_DATA_PTR(v2);
 
+#ifdef USE_ASSERT_CHECKING
 	ndatabytes1 = ARR_SIZE(v1) - ARR_DATA_OFFSET(v1);
 	ndatabytes2 = ARR_SIZE(v2) - ARR_DATA_OFFSET(v2);
+#endif
 
 	/*
 	 * resulting array is made up of the elements (possibly arrays

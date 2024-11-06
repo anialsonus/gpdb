@@ -837,7 +837,9 @@ handlePollSuccess(CdbDispatchCmdAsync *pParms,
 	{
 		long pos = (long)(revents[i].user_data); /* original position */
 		bool		finished;
+#ifdef USE_ASSERT_CHECKING
 		int			sock;
+#endif
 		CdbDispatchResult *dispatchResult = pParms->dispatchResultPtrArray[pos];
 		SegmentDatabaseDescriptor *segdbDesc = dispatchResult->segdbDesc;
 
@@ -854,7 +856,10 @@ handlePollSuccess(CdbDispatchCmdAsync *pParms,
 		ELOG_DISPATCHER_DEBUG("looking for results from %ld of %d (%s)",
 							  pos + 1, pParms->dispatchCount, segdbDesc->whoami);
 
-		sock = PQsocket(segdbDesc->conn);
+#ifdef USE_ASSERT_CHECKING
+		sock =
+#endif
+			PQsocket(segdbDesc->conn);
 		Assert(sock >= 0);
 		Assert(sock == revents[i].fd);
 

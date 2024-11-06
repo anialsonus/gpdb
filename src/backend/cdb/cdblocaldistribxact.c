@@ -132,9 +132,11 @@ LocalDistribXact_DisplayString(int pgprocno)
 {
 	PGPROC *proc = &ProcGlobal->allProcs[pgprocno];
 	PGXACT *pgxact = &ProcGlobal->allPgXact[pgprocno];
+#ifdef USE_ASSERT_CHECKING
 	int			snprintfResult;
 
 	snprintfResult =
+#endif
 		snprintf(
 				 LocalDistribDisplayBuffer,
 				 MAX_LOCAL_DISTRIB_DISPLAY_BUFFER,
@@ -279,7 +281,9 @@ LocalDistribXactCache_AddCommitted(TransactionId localXid,
 	if (LocalDistribXactCache.count >= gp_max_local_distributed_cache)
 	{
 		LocalDistribXactCacheEntry *lastEntry;
+#ifdef USE_ASSERT_CHECKING
 		LocalDistribXactCacheEntry *removedEntry;
+#endif
 
 		Assert(LocalDistribXactCache.count == gp_max_local_distributed_cache);
 
@@ -293,7 +297,9 @@ LocalDistribXactCache_AddCommitted(TransactionId localXid,
 		Assert(lastEntry != NULL);
 		dlist_delete(&lastEntry->lruDoubleLinks);
 
+#ifdef USE_ASSERT_CHECKING
 		removedEntry = (LocalDistribXactCacheEntry *)
+#endif
 			hash_search(LocalDistribCacheHtab, &lastEntry->localXid,
 						HASH_REMOVE, NULL);
 		Assert(lastEntry == removedEntry);

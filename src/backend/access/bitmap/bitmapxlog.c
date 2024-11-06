@@ -332,7 +332,9 @@ _bitmap_xlog_updateword(XLogRecPtr lsn, XLogReaderState *record)
 
 	Buffer			bitmapBuffer;
 	Page			bitmapPage;
+#ifdef USE_ASSERT_CHECKING
 	BMBitmapOpaque	bitmapOpaque;
+#endif
 	BMBitmap 		bitmap;
 
 	xlrec = (xl_bm_updateword *) XLogRecGetData(record);
@@ -345,8 +347,10 @@ _bitmap_xlog_updateword(XLogRecPtr lsn, XLogReaderState *record)
 	if (XLogReadBufferForRedo(record, 0, &bitmapBuffer) == BLK_NEEDS_REDO)
 	{
 		bitmapPage = BufferGetPage(bitmapBuffer);
+#ifdef USE_ASSERT_CHECKING
 		bitmapOpaque =
 			(BMBitmapOpaque)PageGetSpecialPointer(bitmapPage);
+#endif
 		bitmap = (BMBitmap) PageGetContentsMaxAligned(bitmapPage);
 
 		Assert(bitmapOpaque->bm_hrl_words_used > xlrec->bm_word_no);
