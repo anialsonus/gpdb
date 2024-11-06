@@ -1,4 +1,3 @@
-EXTENSION = gp_orca
 MODULE_big = gp_orca
 
 OBJS = gporca.o \

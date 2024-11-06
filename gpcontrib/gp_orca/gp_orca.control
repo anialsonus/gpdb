@@ -1,6 +1,0 @@
-# gp_orca extension
-
-comment = 'ORCA planner'
-default_version = '1.0'
-module_pathname = '$libdir/gp_orca'
-relocatable = false
