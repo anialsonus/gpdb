@@ -16,4 +16,4 @@ endif
 install: install-gp-orca
 
 install-gp-orca: $(DESTDIR)$(datadir)/postgresql.conf.sample
-	sed -i "s/#shared_preload_libraries = ''	# (change requires restart)/shared_preload_libraries = 'gp_orca'/g" $(DESTDIR)$(datadir)/postgresql.conf.sample
+	sed -i "s/#shared_preload_libraries = ''/shared_preload_libraries = 'gp_orca'/g" $(DESTDIR)$(datadir)/postgresql.conf.sample
