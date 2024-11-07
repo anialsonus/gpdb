@@ -113,7 +113,7 @@ bash arenadata/scripts/run_behave_tests.bash gpstart gpstop
 You can specify a custom compiler to build gpdb with. For that, you need to specify CC and CXX arguments
 with --build-arg option. You can also skip unit tests with SKIP_UNITTESTS flag. For example, building
 with clang without running unit tests requires:
-```
+```bash
 docker build -t gpdb7_regress:latest -f arenadata/Dockerfile . --build-arg CC=clang --build-arg CXX=clang++ --build-arg SKIP_UNITTESTS=true
 ```
 There are no restrictions on which compiler you can use, since CC and CXX are just env variables which are
