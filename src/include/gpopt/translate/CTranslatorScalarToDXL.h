@@ -195,8 +195,7 @@ private:
 	CDXLNode *TranslateVarToDXL(const Expr *expr,
 								const CMappingVarColId *var_colid_mapping);
 
-	CDXLNode *TranslateParamToDXL(const Expr *expr,
-								  const CMappingVarColId *var_colid_mapping);
+	CDXLNode *TranslateParamToDXL(const Expr *expr);
 
 	CDXLNode *CreateInitPlanFromParam(const Param *param) const;
 
@@ -227,8 +226,7 @@ private:
 	CDXLNode *TranslateArrayRefToDXL(const Expr *expr,
 									 const CMappingVarColId *var_colid_mapping);
 
-	CDXLNode *TranslateSortGroupClauseToDXL(
-		const Expr *expr, const CMappingVarColId *var_colid_mapping);
+	CDXLNode *TranslateSortGroupClauseToDXL(const Expr *expr);
 
 	// add an indexlist to the given DXL arrayref node
 	void AddArrayIndexList(

@@ -548,7 +548,7 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	rel_ao_version = get_ao_version(rel);
 
 	// get relation columns
-	mdcol_array = RetrieveRelColumns(mp, md_accessor, rel.get());
+	mdcol_array = RetrieveRelColumns(mp, rel.get());
 	const ULONG max_cols =
 		GPDXL_SYSTEM_COLUMNS + (ULONG) rel->rd_att->natts + 1;
 	ULONG *attno_mapping = ConstructAttnoMapping(mp, mdcol_array, max_cols);
@@ -588,7 +588,7 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 	// get number of leaf partitions
 	if (is_partitioned)
 	{
-		RetrievePartKeysAndTypes(mp, rel.get(), oid, &part_keys, &part_types);
+		RetrievePartKeysAndTypes(mp, rel.get(), &part_keys, &part_types);
 
 		partition_oids = GPOS_NEW(mp) IMdIdArray(mp);
 		PartitionDesc part_desc =
@@ -659,8 +659,7 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 //
 //---------------------------------------------------------------------------
 CMDColumnArray *
-CTranslatorRelcacheToDXL::RetrieveRelColumns(
-	CMemoryPool *mp, CMDAccessor *md_accessor GPOS_UNUSED, Relation rel)
+CTranslatorRelcacheToDXL::RetrieveRelColumns(CMemoryPool *mp, Relation rel)
 {
 	CMDColumnArray *mdcol_array = GPOS_NEW(mp) CMDColumnArray(mp);
 
@@ -724,7 +723,7 @@ CTranslatorRelcacheToDXL::RetrieveRelColumns(
 	// add system columns
 	if (RelHasSystemColumns(rel->rd_rel->relkind))
 	{
-		AddSystemColumns(mp, mdcol_array, rel);
+		AddSystemColumns(mp, mdcol_array);
 	}
 
 	return mdcol_array;
@@ -882,8 +881,7 @@ CTranslatorRelcacheToDXL::RetrieveRelDistributionOpFamilies(CMemoryPool *mp,
 //---------------------------------------------------------------------------
 void
 CTranslatorRelcacheToDXL::AddSystemColumns(CMemoryPool *mp,
-										   CMDColumnArray *mdcol_array,
-										   Relation rel GPOS_UNUSED)
+										   CMDColumnArray *mdcol_array)
 {
 	for (INT i = SelfItemPointerAttributeNumber;
 		 i > FirstLowInvalidHeapAttributeNumber; i--)
@@ -2612,7 +2610,6 @@ CTranslatorRelcacheToDXL::RetrieveRelStorageType(Relation rel)
 void
 CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(CMemoryPool *mp,
 												   Relation rel,
-												   OID oid GPOS_UNUSED,
 												   ULongPtrArray **part_keys,
 												   CharPtrArray **part_types)
 {

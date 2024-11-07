@@ -205,7 +205,7 @@ private:
 		ULONG num_mcv_values, const Datum *hist_values, ULONG num_hist_values);
 
 	// get partition keys and types for a relation
-	static void RetrievePartKeysAndTypes(CMemoryPool *mp, Relation rel, OID oid,
+	static void RetrievePartKeysAndTypes(CMemoryPool *mp, Relation rel,
 										 ULongPtrArray **part_keys,
 										 CharPtrArray **part_types);
 
@@ -223,9 +223,7 @@ private:
 									 CDouble *null_freq);
 
 	// get the relation columns
-	static CMDColumnArray *RetrieveRelColumns(CMemoryPool *mp,
-											  CMDAccessor *md_accessor,
-											  Relation rel);
+	static CMDColumnArray *RetrieveRelColumns(CMemoryPool *mp, Relation rel);
 
 	// get the distribution columns
 	static ULongPtrArray *RetrieveRelDistributionCols(
@@ -300,8 +298,7 @@ public:
 									IMDId *mdid);
 
 	// add system columns (oid, tid, xmin, etc) in table descriptors
-	static void AddSystemColumns(CMemoryPool *mp, CMDColumnArray *mdcol_array,
-								 Relation rel);
+	static void AddSystemColumns(CMemoryPool *mp, CMDColumnArray *mdcol_array);
 
 	// retrieve an index from the relcache
 	static IMDIndex *RetrieveIndex(CMemoryPool *mp, CMDAccessor *md_accessor,

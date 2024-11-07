@@ -124,7 +124,7 @@ CTranslatorDXLToScalar::TranslateDXLToScalar(const CDXLNode *dxlnode,
 		}
 		case EdxlopScalarParam:
 		{
-			return TranslateDXLScalarParamToScalar(dxlnode, colid_var);
+			return TranslateDXLScalarParamToScalar(dxlnode);
 		}
 		case EdxlopScalarArrayComp:
 		{
@@ -429,7 +429,7 @@ CTranslatorDXLToScalar::TranslateDXLScalarOpExprToScalar(
 //---------------------------------------------------------------------------
 Expr *
 CTranslatorDXLToScalar::TranslateDXLScalarParamToScalar(
-	const CDXLNode *scalar_param_node, CMappingColIdVar *colid_var GPOS_UNUSED)
+	const CDXLNode *scalar_param_node)
 {
 	GPOS_ASSERT(nullptr != scalar_param_node);
 	CDXLScalarParam *scalar_param_dxl =

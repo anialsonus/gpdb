@@ -263,8 +263,7 @@ CTranslatorScalarToDXL::TranslateVarToDXL(
 //		Create a DXL node for a scalar param expression from a GPDB Param
 //---------------------------------------------------------------------------
 CDXLNode *
-CTranslatorScalarToDXL::TranslateParamToDXL(
-	const Expr *expr, const CMappingVarColId *var_colid_mapping GPOS_UNUSED)
+CTranslatorScalarToDXL::TranslateParamToDXL(const Expr *expr)
 {
 	GPOS_ASSERT(IsA(expr, Param));
 	const Param *param = (Param *) expr;
@@ -318,8 +317,7 @@ CTranslatorScalarToDXL::TranslateScalarToDXL(
 					GPOS_WSZ_LIT(
 						"Use optimizer_enable_query_parameter to enable Orca with query parameters"));
 			}
-			return CTranslatorScalarToDXL::TranslateParamToDXL(
-				expr, var_colid_mapping);
+			return CTranslatorScalarToDXL::TranslateParamToDXL(expr);
 		}
 		case T_Var:
 		{
@@ -438,8 +436,7 @@ CTranslatorScalarToDXL::TranslateScalarToDXL(
 		}
 		case T_SortGroupClause:
 		{
-			return CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(
-				expr, var_colid_mapping);
+			return CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(expr);
 		}
 		case T_FieldSelect:
 		{
@@ -2160,8 +2157,7 @@ CTranslatorScalarToDXL::TranslateArrayRefToDXL(
 }
 
 CDXLNode *
-CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(
-	const Expr *expr, const CMappingVarColId *var_colid_mapping GPOS_UNUSED)
+CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(const Expr *expr)
 {
 	GPOS_ASSERT(IsA(expr, SortGroupClause));
 	const SortGroupClause *sgc = (SortGroupClause *) expr;

@@ -524,8 +524,7 @@ CQueryMutators::FixGroupingCols(Node *node, TargetEntry *orginal_target_entry,
 	// fix any outer references in the grouping column expression
 	Node *expr = (Node *) RunGroupingColMutator(node, context);
 
-	CHAR *name = CQueryMutators::GetTargetEntryColName(orginal_target_entry,
-													   context->m_query);
+	CHAR *name = CQueryMutators::GetTargetEntryColName(orginal_target_entry);
 	TargetEntry *new_target_entry = gpdb::MakeTargetEntry(
 		(Expr *) expr, (AttrNumber) arity, name, false /*resjunk */);
 
@@ -1020,8 +1019,7 @@ CQueryMutators::NormalizeHaving(CMemoryPool *mp, CMDAccessor *md_accessor,
 				gpdb::LAppend(new_query->targetList, new_target_entry);
 			// Ensure that such target entries is not suppressed in the target list of the RTE
 			// and has a name
-			target_entry->resname =
-				GetTargetEntryColName(target_entry, derived_table_query);
+			target_entry->resname = GetTargetEntryColName(target_entry);
 			target_entry->resjunk = false;
 			new_target_entry->ressortgroupref = target_entry->ressortgroupref;
 
@@ -1155,8 +1153,7 @@ CQueryMutators::MakeTopLevelTargetEntry(TargetEntry *old_target_entry,
 //		Return the column name of the target list entry
 //---------------------------------------------------------------------------
 CHAR *
-CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry,
-									  Query *query GPOS_UNUSED)
+CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry)
 {
 	if (nullptr != target_entry->resname)
 	{

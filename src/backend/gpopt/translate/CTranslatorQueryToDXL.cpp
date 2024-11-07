@@ -681,8 +681,7 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 		GPOS_ASSERT(nullptr == m_query->groupingSets);
 		child_dxlnode = TranslateWindowToDXL(
 			dxlnode, m_query->targetList, m_query->windowClause,
-			m_query->sortClause, sort_group_attno_to_colid_mapping,
-			output_attno_to_colid_mapping);
+			sort_group_attno_to_colid_mapping, output_attno_to_colid_mapping);
 	}
 	else
 	{
@@ -1778,7 +1777,6 @@ CTranslatorQueryToDXL::TranslateWindowSpecToDXL(
 CDXLNode *
 CTranslatorQueryToDXL::TranslateWindowToDXL(
 	CDXLNode *child_dxlnode, List *target_list, List *window_clause,
-	List *sort_clause GPOS_UNUSED,
 	IntToUlongMap *sort_col_attno_to_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping)
 {
@@ -3357,7 +3355,7 @@ CTranslatorQueryToDXL::TranslateFromClauseToDXL(Node *node)
 			}
 			case RTE_VALUES:
 			{
-				return TranslateValueScanRTEToDXL(rte, rt_index, m_query_level);
+				return TranslateValueScanRTEToDXL(rte, rt_index);
 			}
 			case RTE_CTE:
 			{
@@ -3634,9 +3632,8 @@ CTranslatorQueryToDXL::NoteDistributionPolicyOpclasses(const RangeTblEntry *rte)
 //
 //---------------------------------------------------------------------------
 CDXLNode *
-CTranslatorQueryToDXL::TranslateValueScanRTEToDXL(
-	const RangeTblEntry *rte, ULONG rt_index,
-	ULONG current_query_level GPOS_UNUSED)
+CTranslatorQueryToDXL::TranslateValueScanRTEToDXL(const RangeTblEntry *rte,
+												  ULONG rt_index)
 {
 	List *tuples_list = rte->values_lists;
 	GPOS_ASSERT(nullptr != tuples_list);
