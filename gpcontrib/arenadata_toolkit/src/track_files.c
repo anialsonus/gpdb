@@ -43,15 +43,24 @@ PG_FUNCTION_INFO_V1(tracking_is_segment_initialized);
 PG_FUNCTION_INFO_V1(tracking_trigger_initial_snapshot);
 PG_FUNCTION_INFO_V1(tracking_is_initial_snapshot_triggered);
 PG_FUNCTION_INFO_V1(tracking_get_track);
-PG_FUNCTION_INFO_V1(tracking_get_track_main);
+PG_FUNCTION_INFO_V1(tracking_track_version);
 
 #define GET_TRACK_TUPDESC_LEN 9
+#define Anum_track_relid ((AttrNumber) 0)
+#define Anum_track_name ((AttrNumber) 1)
+#define Anum_track_relfilenode ((AttrNumber) 2)
+#define Anum_track_size ((AttrNumber) 3)
+#define Anum_track_state ((AttrNumber) 4)
+#define Anum_track_gp_segment_id ((AttrNumber) 5)
+#define Anum_track_gp_segment_relnamespace ((AttrNumber) 6)
+#define Anum_track_gp_segment_relkind ((AttrNumber) 7)
+#define Anum_track_gp_segment_relstorage ((AttrNumber) 8)
 
 /* Preserved state among the calls of tracking_get_track_main */
 typedef struct
 {
 	Relation	pg_class_rel;	/* pg_class relation */
-	SysScanDesc scan;	/* for scans of system table */
+	SysScanDesc scan;			/* for scans of system table */
 }	tf_main_func_state_t;
 
 /*
@@ -61,8 +70,7 @@ typedef struct
 typedef struct
 {
 	bloom_t    *bloom;			/* local copy of shared bloom */
-	bloom_t    *rollback_bloom; /* bloom for rollback in case of sequential
-								 * track acquisition */
+
 	List	   *drops;			/* drop list for current db */
 	ListCell   *next_drop;
 	uint64		relkinds;		/* tracking relkinds */
@@ -70,22 +78,11 @@ typedef struct
 	List	   *schema_oids;	/* tracking schemas */
 }	tf_get_global_state_t;
 
-typedef struct
-{
-	CdbPgResults cdb_results;	/* results of CdbDispatch */
-	int			current_result;
-	int			current_row;
+static tf_get_global_state_t tf_get_global_state = {0};
 
-	SPITupleTable *entry_result;	/* results from SPI queries*/
-	uint64		entry_processed;
-	int			entry_current_row;
-
-	FmgrInfo   *inputFuncInfos; /* FuncInfos for parse string to Datum values
-								 * transformation when using CdbDispatch* */
-	Oid		   *typIOParams;
-}	tf_get_func_state_t;
-
-tf_get_global_state_t tf_get_global_state = {0};
+static bool callbackRegistered = false;
+static bool controlVersionUsed = false;
+static TransactionId local_xid = InvalidTransactionId;
 
 static inline void
 tf_check_shmem_error(void)
@@ -103,34 +100,40 @@ get_dbid(Oid dbid)
 }
 
 /*
- * In case of abort bloom is merged back as well as drops track.
+ * If transaction called tracking_track_version commits, we
+ * can bump the track version, what leads to consistency with
+ * state on segments. In case of abort version on master differs from
+ * segment's and during track acquisition the previous
+ * filter is used on segments.
  */
 static void
-xact_end_get_callback(XactEvent event, void *arg)
+xact_end_version_callback(XactEvent event, void *arg)
 {
-	if (event != XACT_EVENT_COMMIT && event != XACT_EVENT_ABORT)
-		return;
+	bloom_op_ctx_t ctx = bloom_set_get_entry(MyDatabaseId, LW_SHARED, LW_EXCLUSIVE);
 
-	if (tf_get_global_state.bloom == NULL)
-		return;
-
-	if (event == XACT_EVENT_ABORT)
+	if (ctx.entry)
 	{
-		if (tf_get_global_state.rollback_bloom)
-			bloom_set_merge(MyDatabaseId, tf_get_global_state.rollback_bloom);
-		else
-			bloom_set_merge(MyDatabaseId, tf_get_global_state.bloom);
-		drops_track_move_undo(tf_get_global_state.drops, MyDatabaseId);
+		if (event == XACT_EVENT_COMMIT)
+			ctx.entry->master_version++;
+		pg_atomic_clear_flag(&ctx.entry->capture_in_progress);
 	}
 
+	bloom_set_release(&ctx);
+
+	local_xid = InvalidTransactionId;
+	callbackRegistered = false;
+	controlVersionUsed = false;
+}
+
+static void
+xact_end_track_callback(XactEvent event, void *arg)
+{
 	tf_get_global_state.bloom = NULL;
-	tf_get_global_state.rollback_bloom = NULL;
 	tf_get_global_state.drops = NIL;
 	tf_get_global_state.next_drop = NULL;
 	tf_get_global_state.relkinds = 0;
 	tf_get_global_state.relstorages = 0;
 	tf_get_global_state.schema_oids = NIL;
-
 }
 
 static List *
@@ -183,7 +186,7 @@ list_to_bits(const char *input)
 	while (token != NULL)
 	{
 		if (*token != '\0')
-			bits |= (1UL << (*token - 'A'));
+			bits |= (1ULL << (*token - 'A'));
 
 		token = strtok(NULL, ",");
 	}
@@ -314,20 +317,21 @@ schema_is_tracked(Oid schema)
 static bool
 kind_is_tracked(char type, uint64 allowed_kinds)
 {
-	return (allowed_kinds & (1UL << (type - 'A'))) != 0;
+	return (allowed_kinds & (1ULL << (type - 'A'))) != 0;
 }
 
 /*
- * Main logic for getting the size track.
+ * Main function for relation size track acquisition.
  */
 Datum
-tracking_get_track_main(PG_FUNCTION_ARGS)
+tracking_get_track(PG_FUNCTION_ARGS)
 {
 	FuncCallContext *funcctx;
 	tf_main_func_state_t *state;
 	HeapTuple	result;
 	Datum		datums[GET_TRACK_TUPDESC_LEN];
 	bool		nulls[GET_TRACK_TUPDESC_LEN] = {0};
+	uint32		version = PG_GETARG_INT64(0);
 
 	tf_check_shmem_error();
 
@@ -341,41 +345,72 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 
 		funcctx = SRF_FIRSTCALL_INIT();
 
-		RegisterXactCallbackOnce(xact_end_get_callback, NULL);
+		RegisterXactCallbackOnce(xact_end_track_callback, NULL);
 
 		oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 
+		bloom_op_ctx_t bloom_ctx = bloom_set_get_entry(MyDatabaseId, LW_SHARED, LW_EXCLUSIVE);
+
+		if (bloom_ctx.entry == NULL)
+		{
+			bloom_set_release(&bloom_ctx);
+			ereport(ERROR,
+					(errcode(ERRCODE_GP_COMMAND_ERROR),
+					 errmsg("database %u is not tracked", MyDatabaseId),
+					 errhint("Call 'arenadata_toolkit.tracking_register_db()'"
+							 "to enable tracking")));
+		}
+
+		/*
+		 * If current bloom's version differs from incoming, we suppose that
+		 * the rollback of previous track acquisition have occured. In this
+		 * situation we merge previous filter to current active filter.
+		 *
+		 * If the ControlVersion comes, it means that track is acquired
+		 * several times in the same transaction. And the same filter is used
+		 * in this situation.
+		 */
+		if (version != ControlVersion && version != bloom_ctx.entry->work_version)
+		{
+			bloom_merge_internal(&bloom_ctx.entry->bloom);
+		}
+
+		/*
+		 * This block handles 2 scenarios:
+		 * 1. First track acquisition in transaction:
+		 *  - Copy current active bloom filter to local array.
+		 *  - Switch active bloom filter to preserve the state, which has just
+		 *    been copied.
+		 *  - Clear active filter.
+		 *  - Increment current version.
+		 * 2. Subsequent track acquisition in same transaction (ControlVersion)
+		 *  - Temporarily switch to previous filter state
+		 *  - Copy switched bloom filter to local array
+		 *  - Switch back to active filter
+		 *  - Keep existing current version
+		 */
 		if (tf_get_global_state.bloom == NULL)
 		{
-			tf_get_global_state.bloom = palloc(FULL_BLOOM_SIZE(bloom_size));
-			if (!bloom_set_move(MyDatabaseId, tf_get_global_state.bloom))
-				ereport(ERROR,
-						(errcode(ERRCODE_GP_COMMAND_ERROR),
-						 errmsg("database %u is not tracked", MyDatabaseId),
-					errhint("Call 'arenadata_toolkit.tracking_register_db()'"
-							"to enable tracking")));
-		}
-		else
-		{
-			/*
-			 * This code is needed for the cases when there are several track
-			 * requests within the same transaction. rollback_bloom stands for
-			 * preserving initial filter state at the moment of the first
-			 * function call within the transaction.
-			 */
-			if (tf_get_global_state.rollback_bloom == NULL)
+			tf_get_global_state.bloom = palloc0(full_bloom_size(bloom_size));
+			bloom_init(bloom_size, tf_get_global_state.bloom);
+
+			if (version == ControlVersion)
 			{
-				tf_get_global_state.rollback_bloom = palloc(FULL_BLOOM_SIZE(bloom_size));
-				bloom_copy(tf_get_global_state.bloom, tf_get_global_state.rollback_bloom);
+				bloom_switch_current(&bloom_ctx.entry->bloom);
 			}
-			bloom_clear(tf_get_global_state.bloom);
-			if (!bloom_set_move(MyDatabaseId, tf_get_global_state.bloom))
-				ereport(ERROR,
-						(errcode(ERRCODE_GP_COMMAND_ERROR),
-						 errmsg("database %u is not tracked", MyDatabaseId),
-					errhint("Call 'arenadata_toolkit.tracking_register_db()'"
-							"to enable tracking")));
+
+			bloom_copy(tf_get_global_state.bloom, &bloom_ctx.entry->bloom);
+			bloom_switch_current(&bloom_ctx.entry->bloom);
+
+			if (version != ControlVersion)
+			{
+				bloom_clear(&bloom_ctx.entry->bloom);
+				bloom_ctx.entry->work_version = version + 1;
+			}
 		}
+
+		bloom_set_release(&bloom_ctx);
+
 		/* initial snapshot shouldn't return drops */
 		if (!tf_get_global_state.bloom->is_set_all)
 		{
@@ -400,15 +435,15 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
 		funcctx->tuple_desc = CreateTemplateTupleDesc(GET_TRACK_TUPDESC_LEN, false);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 1, "relid", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 2, "name", NAMEOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 3, "relfilenode", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 4, "size", INT8OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 5, "state", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 6, "gp_segment_id", INT4OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 7, "relnamespace", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 8, "relkind", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 9, "relstorage", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_relid + 1, "relid", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_name + 1, "name", NAMEOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_relfilenode + 1, "relfilenode", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_size + 1, "size", INT8OID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_state + 1, "state", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_gp_segment_id + 1, "gp_segment_id", INT4OID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_gp_segment_relnamespace + 1, "relnamespace", OIDOID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_gp_segment_relkind + 1, "relkind", CHAROID, -1, 0);
+		TupleDescInitEntry(funcctx->tuple_desc, Anum_track_gp_segment_relstorage + 1, "relstorage", CHAROID, -1, 0);
 		funcctx->tuple_desc = BlessTupleDesc(funcctx->tuple_desc);
 
 		state = (tf_main_func_state_t *) palloc0(sizeof(tf_main_func_state_t));
@@ -447,32 +482,32 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 			break;
 		}
 
-		datums[7] = heap_getattr(pg_class_tuple, Anum_pg_class_relkind, RelationGetDescr(state->pg_class_rel), &nulls[7]);
-		relkind = DatumGetChar(datums[7]);
+		datums[Anum_track_gp_segment_relkind] = heap_getattr(pg_class_tuple, Anum_pg_class_relkind, RelationGetDescr(state->pg_class_rel), &nulls[7]);
+		relkind = DatumGetChar(datums[Anum_track_gp_segment_relkind]);
 
 		if (!kind_is_tracked(relkind, tf_get_global_state.relkinds))
 			continue;
 
-		datums[8] = heap_getattr(pg_class_tuple, Anum_pg_class_relstorage, RelationGetDescr(state->pg_class_rel), &nulls[8]);
-		relstorage = DatumGetChar(datums[8]);
+		datums[Anum_track_gp_segment_relstorage] = heap_getattr(pg_class_tuple, Anum_pg_class_relstorage, RelationGetDescr(state->pg_class_rel), &nulls[8]);
+		relstorage = DatumGetChar(datums[Anum_track_gp_segment_relstorage]);
 
 		if (!kind_is_tracked(relstorage, tf_get_global_state.relstorages))
 			continue;
 
-		datums[6] = heap_getattr(pg_class_tuple, Anum_pg_class_relnamespace, RelationGetDescr(state->pg_class_rel), &nulls[6]);
-		relnamespace = DatumGetObjectId(datums[6]);
+		datums[Anum_track_gp_segment_relnamespace] = heap_getattr(pg_class_tuple, Anum_pg_class_relnamespace, RelationGetDescr(state->pg_class_rel), &nulls[6]);
+		relnamespace = DatumGetObjectId(datums[Anum_track_gp_segment_relnamespace]);
 
 		if (!schema_is_tracked(relnamespace))
 			continue;
 
-		datums[0] = ObjectIdGetDatum(HeapTupleGetOid(pg_class_tuple));
+		datums[Anum_track_relid] = ObjectIdGetDatum(HeapTupleGetOid(pg_class_tuple));
 
-		datums[1] = heap_getattr(pg_class_tuple, Anum_pg_class_relname, RelationGetDescr(state->pg_class_rel), &nulls[1]);
+		datums[Anum_track_name] = heap_getattr(pg_class_tuple, Anum_pg_class_relname, RelationGetDescr(state->pg_class_rel), &nulls[1]);
 
-		datums[2] = heap_getattr(pg_class_tuple, Anum_pg_class_relfilenode, RelationGetDescr(state->pg_class_rel), &nulls[2]);
-		filenode = DatumGetObjectId(datums[2]);
+		datums[Anum_track_relfilenode] = heap_getattr(pg_class_tuple, Anum_pg_class_relfilenode, RelationGetDescr(state->pg_class_rel), &nulls[2]);
+		filenode = DatumGetObjectId(datums[Anum_track_relfilenode]);
 
-		if (nulls[2])
+		if (nulls[Anum_track_relfilenode])
 			continue;
 
 		/* Bloom filter check */
@@ -481,9 +516,9 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 
 		relp = (Form_pg_class) GETSTRUCT(pg_class_tuple);
 		size = dbsize_calc_size(relp);
-		datums[3] = Int64GetDatum(size);
-		datums[4] = CharGetDatum(tf_get_global_state.bloom->is_set_all ? 'i' : 'a');
-		datums[5] = Int32GetDatum(GpIdentity.segindex);
+		datums[Anum_track_size] = Int64GetDatum(size);
+		datums[Anum_track_state] = CharGetDatum(tf_get_global_state.bloom->is_set_all ? 'i' : 'a');
+		datums[Anum_track_gp_segment_id] = Int32GetDatum(GpIdentity.segindex);
 
 		result = heap_form_tuple(funcctx->tuple_desc, datums, nulls);
 
@@ -500,160 +535,31 @@ tracking_get_track_main(PG_FUNCTION_ARGS)
 		filenode = lfirst_oid(tf_get_global_state.next_drop);
 		tf_get_global_state.next_drop = lnext(tf_get_global_state.next_drop);
 
-		nulls[0] = true;
-		nulls[1] = true;
-		datums[2] = filenode;
-		datums[3] = Int64GetDatum(0);
-		datums[4] = CharGetDatum('d');
-		datums[5] = Int32GetDatum(GpIdentity.segindex);
-		nulls[6] = true;
-		nulls[7] = true;
-		nulls[8] = true;
+		nulls[Anum_track_relid] = true;
+		nulls[Anum_track_name] = true;
+		datums[Anum_track_relfilenode] = filenode;
+		datums[Anum_track_size] = Int64GetDatum(0);
+		datums[Anum_track_state] = CharGetDatum('d');
+		datums[Anum_track_gp_segment_id] = Int32GetDatum(GpIdentity.segindex);
+		nulls[Anum_track_gp_segment_relnamespace] = true;
+		nulls[Anum_track_gp_segment_relkind] = true;
+		nulls[Anum_track_gp_segment_relstorage] = true;
 
 		result = heap_form_tuple(funcctx->tuple_desc, datums, nulls);
 
 		SRF_RETURN_NEXT(funcctx, HeapTupleGetDatum(result));
 	}
 
-	SRF_RETURN_DONE(funcctx);
-}
-
-/*
- * Function used in "arenadata_toolkit.tables_track" view. In order to keep bloom filter
- * in consistent state across segments this function dispatches main tracking logic to the
- * segments in a distributed transaction.
- */
-Datum
-tracking_get_track(PG_FUNCTION_ARGS)
-{
-	FuncCallContext *funcctx;
-	tf_get_func_state_t *state;
-	HeapTuple	result;
-	Datum		values[GET_TRACK_TUPDESC_LEN];
-	bool		nulls[GET_TRACK_TUPDESC_LEN] = {0};
-
-	tf_check_shmem_error();
-
-	if (SRF_IS_FIRSTCALL())
+	if (tf_get_global_state.bloom)
 	{
-		MemoryContext oldcontext = CurrentMemoryContext;
-
-		funcctx = SRF_FIRSTCALL_INIT();
-
-		/*
-		 * If we use CdbDispatchCommandToSegments, we will face the problem
-		 * that entry db slice won't be part of global transaction and
-		 * immediately commits, killing the chance for bloom filter to
-		 * restore. Therefore, the spi approach for retrieving track at -1
-		 * segment is chosen.
-		 */
-		if (SPI_connect() != SPI_OK_CONNECT)
-			ereport(ERROR, (errmsg("SPI_connect failed")));
-		if (SPI_execute("SELECT * FROM arenadata_toolkit.tracking_get_track_main()", true, 0) != SPI_OK_SELECT)
-			ereport(ERROR, (errmsg("SPI_execute failed")));
-
-		MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
-
-		state = (tf_get_func_state_t *) palloc0(sizeof(tf_get_func_state_t));
-		funcctx->user_fctx = (void *) state;
-
-		state->entry_result = SPI_tuptable;
-		state->entry_processed = SPI_processed;
-		state->entry_current_row = 0;
-
-		CdbDispatchCommand("SELECT * FROM arenadata_toolkit.tracking_get_track_main()", DF_NEED_TWO_PHASE | DF_CANCEL_ON_ERROR,
-						   &state->cdb_results);
-
-		state->current_result = 0;
-		state->current_row = 0;
-
-		funcctx->tuple_desc = CreateTemplateTupleDesc(9, false);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 1, "relid", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 2, "name", NAMEOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 3, "relfilenode", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 4, "size", INT8OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 5, "state", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 6, "gp_segment_id", INT4OID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 7, "relnamespace", OIDOID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 8, "relkind", CHAROID, -1, 0);
-		TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 9, "relstorage", CHAROID, -1, 0);
-		funcctx->tuple_desc = BlessTupleDesc(funcctx->tuple_desc);
-
-		if (state->cdb_results.numResults > 0)
-		{
-			int			natts = funcctx->tuple_desc->natts;
-
-			state->inputFuncInfos = (FmgrInfo *) palloc0(natts * sizeof(FmgrInfo));
-			state->typIOParams = (Oid *) palloc0(natts * sizeof(Oid));
-			for (int i = 0; i < natts; i++)
-			{
-				Oid			type = TupleDescAttr(funcctx->tuple_desc, i)->atttypid;
-
-				getTypeInputInfo(type, &state->inputFuncInfos[i].fn_oid, &state->typIOParams[i]);
-				fmgr_info(state->inputFuncInfos[i].fn_oid, &state->inputFuncInfos[i]);
-			}
-		}
-
-		MemoryContextSwitchTo(oldcontext);
+		pfree(tf_get_global_state.bloom);
+		tf_get_global_state.bloom = NULL;
 	}
 
-	funcctx = SRF_PERCALL_SETUP();
-	state = funcctx->user_fctx;
-
-	if (state->entry_current_row < state->entry_processed)
+	if (tf_get_global_state.schema_oids)
 	{
-		HeapTuple	inputTuple = state->entry_result->vals[state->entry_current_row];
-		TupleDesc	inputTupleDesc = state->entry_result->tupdesc;
-
-		for (int i = 0; i < funcctx->tuple_desc->natts; i++)
-		{
-			values[i] = SPI_getbinval(inputTuple, inputTupleDesc, i + 1, &nulls[i]);
-		}
-		HeapTuple	resultTuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
-
-		state->entry_current_row++;
-		SRF_RETURN_NEXT(funcctx, HeapTupleGetDatum(resultTuple));
-	}
-
-	SPI_finish();
-
-	while (state->current_result < state->cdb_results.numResults)
-	{
-		struct pg_result *pgresult = state->cdb_results.pg_results[state->current_result];
-
-		if (pgresult)
-		{
-			int			nrows = PQntuples(pgresult);
-			int			ncols = PQnfields(pgresult);
-
-			if (state->current_row < nrows)
-			{
-				for (int col = 0; col < ncols; col++)
-				{
-					if (PQgetisnull(pgresult, state->current_row, col))
-					{
-						values[col] = (Datum) 0;
-						nulls[col] = true;
-					}
-					else
-					{
-						char	   *value = PQgetvalue(pgresult, state->current_row, col);
-
-						values[col] = InputFunctionCall(&state->inputFuncInfos[col], value, state->typIOParams[col], -1);
-					}
-				}
-				result = heap_form_tuple(funcctx->tuple_desc, values, nulls);
-				state->current_row++;
-				SRF_RETURN_NEXT(funcctx, HeapTupleGetDatum(result));
-			}
-			else
-			{
-				state->current_row = 0;
-				state->current_result++;
-			}
-		}
-		else
-			state->current_result++;
+		pfree(tf_get_global_state.schema_oids);
+		tf_get_global_state.schema_oids = NIL;
 	}
 
 	SRF_RETURN_DONE(funcctx);
@@ -769,6 +675,12 @@ tracking_register_db(PG_FUNCTION_ARGS)
 
 	tf_check_shmem_error();
 
+	if (Gp_role != GP_ROLE_DISPATCH && IS_QUERY_DISPATCHER())
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_register_db outside query dispatcher")));
+	}
+
 	if (Gp_role == GP_ROLE_DISPATCH && !is_initialized())
 		ereport(ERROR,
 				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
@@ -801,6 +713,12 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 
 	tf_check_shmem_error();
 
+	if (Gp_role != GP_ROLE_DISPATCH && IS_QUERY_DISPATCHER())
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_unregister_db outside query dispatcher")));
+	}
+
 	if (Gp_role == GP_ROLE_DISPATCH && !is_initialized())
 		ereport(ERROR,
 				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
@@ -829,7 +747,11 @@ tracking_set_snapshot_on_recovery(PG_FUNCTION_ARGS)
 	bool		set = PG_GETARG_BOOL(0);
 	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 
-	tf_check_shmem_error();
+	if (Gp_role != GP_ROLE_DISPATCH)
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_set_snapshot_on_recovery outside query dispatcher")));
+	}
 
 	A_Const		aconst =
 	{.type = T_A_Const,.val = {.type = T_String,.val.str = set ? "t" : "f"}};
@@ -843,7 +765,7 @@ tracking_set_snapshot_on_recovery(PG_FUNCTION_ARGS)
 
 	if (stmt.dbname == NULL)
 		ereport(ERROR,
-		(errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
+		   (errmsg("[arenadata_toolkit] database %u does not exist", dbid)));
 
 	v_stmt.type = T_VariableSetStmt;
 	v_stmt.kind = VAR_SET_VALUE;
@@ -1035,7 +957,11 @@ tracking_register_schema(PG_FUNCTION_ARGS)
 	const char *schema_name = NameStr(*PG_GETARG_NAME(0));
 	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 
-	tf_check_shmem_error();
+	if (Gp_role != GP_ROLE_DISPATCH)
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_register_schema outside query dispatcher")));
+	}
 
 	if (!SearchSysCacheExists1(NAMESPACENAME, CStringGetDatum(schema_name)))
 		ereport(ERROR,
@@ -1055,7 +981,11 @@ tracking_unregister_schema(PG_FUNCTION_ARGS)
 	const char *schema_name = NameStr(*PG_GETARG_NAME(0));
 	Oid			dbid = get_dbid(PG_GETARG_OID(1));
 
-	tf_check_shmem_error();
+	if (Gp_role != GP_ROLE_DISPATCH)
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_unregister_schema outside query dispatcher")));
+	}
 
 	if (!SearchSysCacheExists1(NAMESPACENAME, CStringGetDatum(schema_name)))
 		ereport(ERROR,
@@ -1105,7 +1035,11 @@ tracking_set_relkinds(PG_FUNCTION_ARGS)
 	VariableSetStmt v_stmt;
 	A_Const		arg;
 
-	tf_check_shmem_error();
+	if (Gp_role != GP_ROLE_DISPATCH)
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_set_relkinds outside query dispatcher")));
+	}
 
 	initStringInfo(&buf);
 	str_copy = pstrdup(relkinds_str);
@@ -1208,7 +1142,11 @@ tracking_set_relstorages(PG_FUNCTION_ARGS)
 	VariableSetStmt v_stmt;
 	A_Const		arg;
 
-	tf_check_shmem_error();
+	if (Gp_role != GP_ROLE_DISPATCH)
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_set_relstorages outside query dispatcher")));
+	}
 
 	initStringInfo(&buf);
 	str_copy = pstrdup(relstorages_str);
@@ -1286,14 +1224,36 @@ Datum
 tracking_trigger_initial_snapshot(PG_FUNCTION_ARGS)
 {
 	Oid			dbid = get_dbid(PG_GETARG_OID(0));
+	bloom_op_ctx_t ctx = {0};
 
 	tf_check_shmem_error();
 
+	if (Gp_role != GP_ROLE_DISPATCH && IS_QUERY_DISPATCHER())
+	{
+		ereport(ERROR,
+				(errmsg("Cannot execute tracking_trigger_initial_snapshot outside query dispatcher")));
+	}
+
 	elog(LOG, "[arenadata_toolkit] tracking_trigger_initial_snapshot dbid: %u", dbid);
 
-	if (!bloom_set_trigger_bits(dbid, true))
+	ctx = bloom_set_get_entry(MyDatabaseId, LW_SHARED, LW_EXCLUSIVE);
+
+	if (!ctx.entry)
+	{
+		bloom_set_release(&ctx);
 		ereport(ERROR,
 		(errmsg("Failed to find corresponding filter to database %u", dbid)));
+	}
+
+	if (Gp_role == GP_ROLE_DISPATCH && !pg_atomic_unlocked_test_flag(&ctx.entry->capture_in_progress))
+	{
+		bloom_set_release(&ctx);
+		ereport(ERROR,
+		  (errmsg("Cannot modify track during track acquisition %u", dbid)));
+	}
+
+	bloom_set_all(&ctx.entry->bloom);
+	bloom_set_release(&ctx);
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
@@ -1343,4 +1303,65 @@ tracking_is_segment_initialized(PG_FUNCTION_ARGS)
 	result = HeapTupleGetDatum(tuple);
 
 	PG_RETURN_DATUM(result);
+}
+
+/*
+ * This function should be used as argument for tracking_get_track function to
+ * follow correct transaction semantics. Several calls of the function within
+ * the same transaction return ControlVersion, which says tracking_get_track
+ * to return previous filter state.
+ */
+Datum
+tracking_track_version(PG_FUNCTION_ARGS)
+{
+	int64		version = (int64) InvalidVersion;
+	TransactionId current_xid = GetCurrentTransactionIdIfAny();
+
+	tf_check_shmem_error();
+
+	bloom_op_ctx_t ctx = bloom_set_get_entry(MyDatabaseId, LW_SHARED, LW_EXCLUSIVE);
+
+	if (!ctx.entry)
+	{
+		bloom_set_release(&ctx);
+
+		ereport(ERROR,
+				(errcode(ERRCODE_GP_COMMAND_ERROR),
+				 errmsg("database %u is not tracked", MyDatabaseId),
+				 errhint("Call 'arenadata_toolkit.tracking_register_db()'"
+						 "to enable tracking")));
+	}
+	else if (!callbackRegistered && !pg_atomic_test_set_flag(&ctx.entry->capture_in_progress))
+	{
+		bloom_set_release(&ctx);
+		ereport(ERROR,
+				(errcode(ERRCODE_GP_COMMAND_ERROR),
+				 errmsg("Track for database %u is being acquired in other transaction", MyDatabaseId)));
+	}
+
+	version = (int64) ctx.entry->master_version;
+	bloom_set_release(&ctx);
+
+	if (!callbackRegistered)
+	{
+		RegisterXactCallbackOnce(xact_end_version_callback, NULL);
+		callbackRegistered = true;
+
+		if (current_xid != local_xid)
+		{
+			local_xid = current_xid;
+			controlVersionUsed = false;
+		}
+		else if (current_xid != InvalidTransactionId)
+		{
+			controlVersionUsed = true;
+		}
+	}
+
+	if (controlVersionUsed)
+	{
+		version = (int64) ControlVersion;
+	}
+
+	PG_RETURN_INT64(version);
 }

@@ -115,8 +115,8 @@ SELECT objname, objtype, objstorage, objacl FROM toolkit_objects_info ORDER BY o
  is_initial_snapshot_triggered                              | table   | v          | 
  operation_exclude                                          | table   | a          | 
  tables_track                                               | table   | v          | 
- tracking_get_track                                         | proc    | -          | 
- tracking_get_track_main                                    | proc    | -          | 
+ tracking_get_track_master                                  | proc    | -          | {owner=X/owner}
+ tracking_get_track_segments                                | proc    | -          | {owner=X/owner}
  tracking_is_initial_snapshot_triggered                     | proc    | -          | {owner=X/owner}
  tracking_is_initial_snapshot_triggered_master              | proc    | -          | 
  tracking_is_initial_snapshot_triggered_segments            | proc    | -          | 
@@ -127,10 +127,11 @@ SELECT objname, objtype, objstorage, objacl FROM toolkit_objects_info ORDER BY o
  tracking_set_relkinds                                      | proc    | -          | {owner=X/owner}
  tracking_set_relstorages                                   | proc    | -          | {owner=X/owner}
  tracking_set_snapshot_on_recovery                          | proc    | -          | {owner=X/owner}
+ tracking_track_version                                     | proc    | -          | {owner=X/owner}
  tracking_trigger_initial_snapshot                          | proc    | -          | 
  tracking_unregister_db                                     | proc    | -          | {owner=X/owner}
  tracking_unregister_schema                                 | proc    | -          | {owner=X/owner}
-(41 rows)
+(42 rows)
 
 -- check that toolkit objects now depends on extension
 SELECT objname, objtype, extname, deptype FROM pg_depend d JOIN
@@ -155,8 +156,8 @@ WHERE d.deptype = 'e' AND e.extname = 'arenadata_toolkit' ORDER BY objname;
  adb_vacuum_strategy_newest_last                 | proc    | arenadata_toolkit | e
  is_initial_snapshot_triggered                   | table   | arenadata_toolkit | e
  tables_track                                    | table   | arenadata_toolkit | e
- tracking_get_track                              | proc    | arenadata_toolkit | e
- tracking_get_track_main                         | proc    | arenadata_toolkit | e
+ tracking_get_track_master                       | proc    | arenadata_toolkit | e
+ tracking_get_track_segments                     | proc    | arenadata_toolkit | e
  tracking_is_initial_snapshot_triggered          | proc    | arenadata_toolkit | e
  tracking_is_initial_snapshot_triggered_master   | proc    | arenadata_toolkit | e
  tracking_is_initial_snapshot_triggered_segments | proc    | arenadata_toolkit | e
@@ -167,10 +168,11 @@ WHERE d.deptype = 'e' AND e.extname = 'arenadata_toolkit' ORDER BY objname;
  tracking_set_relkinds                           | proc    | arenadata_toolkit | e
  tracking_set_relstorages                        | proc    | arenadata_toolkit | e
  tracking_set_snapshot_on_recovery               | proc    | arenadata_toolkit | e
+ tracking_track_version                          | proc    | arenadata_toolkit | e
  tracking_trigger_initial_snapshot               | proc    | arenadata_toolkit | e
  tracking_unregister_db                          | proc    | arenadata_toolkit | e
  tracking_unregister_schema                      | proc    | arenadata_toolkit | e
-(31 rows)
+(32 rows)
 
 DROP EXTENSION arenadata_toolkit;
 DROP SCHEMA arenadata_toolkit CASCADE;
@@ -212,8 +214,8 @@ SELECT objname, objtype, objstorage, objacl FROM toolkit_objects_info ORDER BY o
  is_initial_snapshot_triggered                   | table   | v          | 
  operation_exclude                               | table   | a          | {owner=arwdDxt/owner}
  tables_track                                    | table   | v          | 
- tracking_get_track                              | proc    | -          | 
- tracking_get_track_main                         | proc    | -          | 
+ tracking_get_track_master                       | proc    | -          | {owner=X/owner}
+ tracking_get_track_segments                     | proc    | -          | {owner=X/owner}
  tracking_is_initial_snapshot_triggered          | proc    | -          | {owner=X/owner}
  tracking_is_initial_snapshot_triggered_master   | proc    | -          | 
  tracking_is_initial_snapshot_triggered_segments | proc    | -          | 
@@ -224,10 +226,11 @@ SELECT objname, objtype, objstorage, objacl FROM toolkit_objects_info ORDER BY o
  tracking_set_relkinds                           | proc    | -          | {owner=X/owner}
  tracking_set_relstorages                        | proc    | -          | {owner=X/owner}
  tracking_set_snapshot_on_recovery               | proc    | -          | {owner=X/owner}
+ tracking_track_version                          | proc    | -          | {owner=X/owner}
  tracking_trigger_initial_snapshot               | proc    | -          | 
  tracking_unregister_db                          | proc    | -          | {owner=X/owner}
  tracking_unregister_schema                      | proc    | -          | {owner=X/owner}
-(38 rows)
+(39 rows)
 
 -- check that toolkit objects now depends on extension
 SELECT objname, objtype, extname, deptype FROM pg_depend d JOIN
@@ -252,8 +255,8 @@ WHERE d.deptype = 'e' AND e.extname = 'arenadata_toolkit' ORDER BY objname;
  adb_vacuum_strategy_newest_last                 | proc    | arenadata_toolkit | e
  is_initial_snapshot_triggered                   | table   | arenadata_toolkit | e
  tables_track                                    | table   | arenadata_toolkit | e
- tracking_get_track                              | proc    | arenadata_toolkit | e
- tracking_get_track_main                         | proc    | arenadata_toolkit | e
+ tracking_get_track_master                       | proc    | arenadata_toolkit | e
+ tracking_get_track_segments                     | proc    | arenadata_toolkit | e
  tracking_is_initial_snapshot_triggered          | proc    | arenadata_toolkit | e
  tracking_is_initial_snapshot_triggered_master   | proc    | arenadata_toolkit | e
  tracking_is_initial_snapshot_triggered_segments | proc    | arenadata_toolkit | e
@@ -264,10 +267,11 @@ WHERE d.deptype = 'e' AND e.extname = 'arenadata_toolkit' ORDER BY objname;
  tracking_set_relkinds                           | proc    | arenadata_toolkit | e
  tracking_set_relstorages                        | proc    | arenadata_toolkit | e
  tracking_set_snapshot_on_recovery               | proc    | arenadata_toolkit | e
+ tracking_track_version                          | proc    | arenadata_toolkit | e
  tracking_trigger_initial_snapshot               | proc    | arenadata_toolkit | e
  tracking_unregister_db                          | proc    | arenadata_toolkit | e
  tracking_unregister_schema                      | proc    | arenadata_toolkit | e
-(31 rows)
+(32 rows)
 
 DROP EXTENSION arenadata_toolkit;
 DROP SCHEMA arenadata_toolkit CASCADE;

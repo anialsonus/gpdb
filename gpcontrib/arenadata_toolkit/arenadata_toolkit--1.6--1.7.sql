@@ -72,19 +72,42 @@ returns TABLE(segindex INT, is_initialized BOOL) AS '$libdir/arenadata_toolkit',
 
 REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_is_segment_initialized() FROM public;
 
-CREATE FUNCTION arenadata_toolkit.tracking_get_track_main()
-RETURNS TABLE(relid OID, relname NAME, relfilenode OID, size BIGINT, state "char", segid INT,
-relnamespace OID, relkind "char", relstorage "char") AS '$libdir/arenadata_toolkit',
-'tracking_get_track_main' LANGUAGE C;
+CREATE FUNCTION arenadata_toolkit.tracking_track_version()
+returns BIGINT AS '$libdir/arenadata_toolkit',
+'tracking_track_version' LANGUAGE C STABLE EXECUTE ON MASTER;
 
-CREATE FUNCTION arenadata_toolkit.tracking_get_track()
+REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_track_version() FROM public;
+
+CREATE FUNCTION arenadata_toolkit.tracking_get_track_master(version BIGINT)
 RETURNS TABLE(relid OID, relname NAME, relfilenode OID, size BIGINT, state "char", segid INT,
 relnamespace OID, relkind "char", relstorage "char") AS '$libdir/arenadata_toolkit',
-'tracking_get_track' LANGUAGE C EXECUTE ON master;
+'tracking_get_track' LANGUAGE C EXECUTE ON MASTER;
+
+REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_get_track_master(version BIGINT) FROM public;
+
+CREATE FUNCTION arenadata_toolkit.tracking_get_track_segments(version BIGINT)
+RETURNS TABLE(relid OID, relname NAME, relfilenode OID, size BIGINT, state "char", segid INT,
+relnamespace OID, relkind "char", relstorage "char") AS '$libdir/arenadata_toolkit',
+'tracking_get_track' LANGUAGE C EXECUTE ON ALL SEGMENTS;
+
+REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_get_track_segments(version BIGINT) FROM public;
 
 CREATE VIEW arenadata_toolkit.tables_track AS
 SELECT t.*, coalesce(c.oid, i.indrelid, vm.relid, blk.relid, seg.relid) AS parent_relid
-FROM arenadata_toolkit.tracking_get_track() AS t
+FROM arenadata_toolkit.tracking_get_track_master(arenadata_toolkit.tracking_track_version()) AS t
+LEFT JOIN pg_class AS c
+    ON c.reltoastrelid = t.relid AND t.relkind = 't'
+LEFT JOIN pg_index AS i
+    ON i.indexrelid = t.relid AND t.relkind = 'i'
+LEFT JOIN pg_catalog.pg_appendonly AS vm
+    ON vm.visimaprelid = t.relid AND t.relkind = 'M'
+LEFT JOIN pg_catalog.pg_appendonly AS blk
+    ON blk.blkdirrelid = t.relid AND t.relkind = 'b'
+LEFT JOIN pg_catalog.pg_appendonly AS seg
+    ON seg.segrelid = t.relid AND t.relkind = 'o'
+UNION ALL
+SELECT t.*, coalesce(c.oid, i.indrelid, vm.relid, blk.relid, seg.relid) AS parent_relid
+FROM arenadata_toolkit.tracking_get_track_segments(arenadata_toolkit.tracking_track_version()) AS t
 LEFT JOIN pg_class AS c
     ON c.reltoastrelid = t.relid AND t.relkind = 't'
 LEFT JOIN pg_index AS i

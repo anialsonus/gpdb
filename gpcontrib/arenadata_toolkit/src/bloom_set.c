@@ -2,10 +2,24 @@
  * Set of blooms. Main entry point to find a bloom and work with it.
  * Used to track create, extend, truncate events.
  */
+#include "arenadata_toolkit_guc.h"
 #include "bloom_set.h"
 #include "tf_shmem.h"
 
-#define BLOOM_ENTRY_GET(set, i) (void *)(set->bloom_entries + i * FULL_BLOOM_ENTRY_SIZE(set->bloom_size));
+LWLock	   *bloom_set_lock;
+tf_entry_lock_t bloom_locks[MAX_DB_TRACK_COUNT];
+
+static inline Size
+bloom_entry_size(uint32 size)
+{
+	return (offsetof(bloom_entry_t, bloom) + full_bloom_size(2 * size));
+}
+
+static inline void *
+bloom_entry_get(bloom_set_t * set, int idx)
+{
+	return (void *) ((uint8 *) set->bloom_entries + idx * bloom_entry_size(set->bloom_size));
+}
 
 /*
  * bloom_set api assumes that we are working with the single bloom set.
@@ -26,7 +40,24 @@ static void
 bloom_entry_init(const uint32_t bloom_size, bloom_entry_t * bloom_entry)
 {
 	bloom_entry->dbid = InvalidOid;
+	bloom_entry->master_version = InvalidVersion;
+	bloom_entry->work_version = InvalidVersion;
 	bloom_init(bloom_size, &bloom_entry->bloom);
+}
+
+/*
+ * Separate initialization of LWLocks;
+ */
+static void
+init_lwlocks(void)
+{
+	bloom_set_lock = LWLockAssign();
+
+	for (int i = 0; i < db_track_count; ++i)
+	{
+		bloom_locks[i].lock = LWLockAssign();
+		bloom_locks[i].dbid = InvalidOid;
+	}
 }
 
 void
@@ -39,10 +70,19 @@ bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size)
 
 	for (uint32_t i = 0; i < bloom_count; i++)
 	{
-		bloom_entry_t *bloom_entry = BLOOM_ENTRY_GET(bloom_set, i);
+		bloom_entry_t *bloom_entry = bloom_entry_get(bloom_set, i);
 
 		bloom_entry_init(bloom_size, bloom_entry);
 	}
+
+	init_lwlocks();
+	init_bloom_invariants();
+}
+
+Size
+bloom_set_required_size(uint32 size, int count)
+{
+	return (offsetof(bloom_set_t, bloom_entries) + count * bloom_entry_size(size));
 }
 
 /*
@@ -57,7 +97,7 @@ find_bloom_entry(Oid dbid)
 
 	for (i = 0; i < bloom_set->bloom_count; i++)
 	{
-		bloom_entry = BLOOM_ENTRY_GET(bloom_set, i);
+		bloom_entry = bloom_entry_get(bloom_set, i);
 		if (bloom_entry->dbid == dbid)
 			break;
 	}
@@ -90,6 +130,9 @@ bloom_set_bind(Oid dbid)
 		return false;
 	}
 	bloom_entry->dbid = dbid;
+	bloom_entry->master_version = StartVersion;
+	bloom_entry->work_version = StartVersion;
+	pg_atomic_init_flag(&bloom_entry->capture_in_progress);
 	LWLockBindEntry(dbid);
 	LWLockRelease(bloom_set_lock);
 
@@ -103,31 +146,20 @@ bloom_set_bind(Oid dbid)
 bool
 bloom_set_trigger_bits(Oid dbid, bool on)
 {
-	bloom_entry_t *bloom_entry;
-	LWLock	   *entry_lock;
+	bloom_op_ctx_t ctx = bloom_set_get_entry(dbid, LW_SHARED, LW_EXCLUSIVE);
 
-	bloom_set_check_state();
-
-	LWLockAcquire(bloom_set_lock, LW_SHARED);
-	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
-	bloom_entry = find_bloom_entry(dbid);
-	if (bloom_entry)
+	if (ctx.entry)
 	{
 		if (on)
-			bloom_set_all(&bloom_entry->bloom);
+			bloom_set_all(&ctx.entry->bloom);
 		else
-			bloom_clear(&bloom_entry->bloom);
-		if (entry_lock)
-			LWLockRelease(entry_lock);
-		LWLockRelease(bloom_set_lock);
+			bloom_clear(&ctx.entry->bloom);
+
+		bloom_set_release(&ctx);
 		return true;
 	}
-	if (entry_lock)
-		LWLockRelease(entry_lock);
-	LWLockRelease(bloom_set_lock);
 
-	if (bloom_entry == NULL)
-		elog(LOG, "[arenadata toolkit] tracking_initial_snapshot Bloom filter not found");
+	bloom_set_release(&ctx);
 
 	return false;
 }
@@ -157,47 +189,31 @@ bloom_set_unbind(Oid dbid)
 void
 bloom_set_set(Oid dbid, Oid relNode)
 {
-	bloom_entry_t *bloom_entry;
-	LWLock	   *entry_lock;
+	bloom_op_ctx_t ctx = bloom_set_get_entry(dbid, LW_SHARED, LW_EXCLUSIVE);
 
-	bloom_set_check_state();
-
-	LWLockAcquire(bloom_set_lock, LW_SHARED);
-	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
-	bloom_entry = find_bloom_entry(dbid);
-	if (bloom_entry)
+	if (ctx.entry)
 	{
-		bloom_set_bits(&bloom_entry->bloom, relNode);
+		bloom_set_bits(&ctx.entry->bloom, relNode);
 	}
-	if (entry_lock)
-		LWLockRelease(entry_lock);
-	LWLockRelease(bloom_set_lock);
+	bloom_set_release(&ctx);
+
 }
 
-/* Find bloom by dbid, copy all bytes to new filter, clear old (but keep it) */
+/* Find bloom by dbid, copy all bytes to new filter */
 bool
 bloom_set_move(Oid dbid, bloom_t * dest)
 {
-	bloom_entry_t *bloom_entry;
-	LWLock	   *entry_lock;
+	bloom_op_ctx_t ctx = bloom_set_get_entry(dbid, LW_SHARED, LW_EXCLUSIVE);
 
-	bloom_set_check_state();
-
-	LWLockAcquire(bloom_set_lock, LW_SHARED);
-	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
-	bloom_entry = find_bloom_entry(dbid);
-	if (bloom_entry)
+	if (ctx.entry)
 	{
-		bloom_copy(&bloom_entry->bloom, dest);
-		bloom_clear(&bloom_entry->bloom);
-		if (entry_lock)
-			LWLockRelease(entry_lock);
-		LWLockRelease(bloom_set_lock);
+		bloom_copy(dest, &ctx.entry->bloom);
+		bloom_clear(&ctx.entry->bloom);
+		bloom_set_release(&ctx);
 		return true;
 	}
-	if (entry_lock)
-		LWLockRelease(entry_lock);
-	LWLockRelease(bloom_set_lock);
+
+	bloom_set_release(&ctx);
 
 	return false;
 }
@@ -206,28 +222,18 @@ bloom_set_move(Oid dbid, bloom_t * dest)
 bool
 bloom_set_merge(Oid dbid, bloom_t * from)
 {
-	bloom_entry_t *bloom_entry;
-	LWLock	   *entry_lock;
-
-	bloom_set_check_state();
-
 	if (!from)
 		return false;
 
-	LWLockAcquire(bloom_set_lock, LW_SHARED);
-	entry_lock = LWLockAcquireEntry(dbid, LW_EXCLUSIVE);
-	bloom_entry = find_bloom_entry(dbid);
-	if (bloom_entry)
+	bloom_op_ctx_t ctx = bloom_set_get_entry(dbid, LW_SHARED, LW_EXCLUSIVE);
+
+	if (ctx.entry)
 	{
-		bloom_merge(&bloom_entry->bloom, from);
-		if (entry_lock)
-			LWLockRelease(entry_lock);
-		LWLockRelease(bloom_set_lock);
+		bloom_merge(&ctx.entry->bloom, from);
+		bloom_set_release(&ctx);
 		return true;
 	}
-	if (entry_lock)
-		LWLockRelease(entry_lock);
-	LWLockRelease(bloom_set_lock);
+	bloom_set_release(&ctx);
 
 	return false;
 }
@@ -235,22 +241,97 @@ bloom_set_merge(Oid dbid, bloom_t * from)
 bool
 bloom_set_is_all_bits_triggered(Oid dbid)
 {
-	bloom_entry_t *bloom_entry;
 	bool		is_triggered = false;
-	LWLock	   *entry_lock;
+	bloom_op_ctx_t ctx = bloom_set_get_entry(dbid, LW_SHARED, LW_SHARED);
+
+	if (ctx.entry)
+	{
+		is_triggered = ctx.entry->bloom.is_set_all;
+	}
+
+	bloom_set_release(&ctx);
+
+	return is_triggered;
+}
+
+bloom_op_ctx_t
+bloom_set_get_entry(Oid dbid, LWLockMode s_mode, LWLockMode e_mode)
+{
+	bloom_op_ctx_t ctx = {0};
 
 	bloom_set_check_state();
 
-	LWLockAcquire(bloom_set_lock, LW_SHARED);
-	entry_lock = LWLockAcquireEntry(dbid, LW_SHARED);
-	bloom_entry = find_bloom_entry(dbid);
-	if (bloom_entry)
-	{
-		is_triggered = bloom_entry->bloom.is_set_all;
-	}
-	if (entry_lock)
-		LWLockRelease(entry_lock);
-	LWLockRelease(bloom_set_lock);
+	LWLockAcquire(bloom_set_lock, s_mode);
+	ctx.entry_lock = LWLockAcquireEntry(dbid, e_mode);
+	ctx.entry = find_bloom_entry(dbid);
+	ctx.set_lock = bloom_set_lock;
 
-	return is_triggered;
+	return ctx;
+}
+void
+bloom_set_release(bloom_op_ctx_t * ctx)
+{
+	if (ctx->entry_lock)
+		LWLockRelease(ctx->entry_lock);
+	LWLockRelease(ctx->set_lock);
+}
+
+/*
+ * Acquire lock corresponding to dbid in bloom_set.
+ */
+LWLock *
+LWLockAcquireEntry(Oid dbid, LWLockMode mode)
+{
+	for (int i = 0; i < db_track_count; ++i)
+	{
+		if (bloom_locks[i].dbid == dbid)
+		{
+			LWLockAcquire(bloom_locks[i].lock, mode);
+			return bloom_locks[i].lock;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Bind LWLock to tracked dbid.
+ */
+void
+LWLockBindEntry(Oid dbid)
+{
+	int			i;
+
+	for (i = 0; i < db_track_count; ++i)
+	{
+		if (bloom_locks[i].dbid == InvalidOid)
+		{
+			bloom_locks[i].dbid = dbid;
+			break;
+		}
+	}
+
+	if (i == db_track_count && pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
+		pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
+}
+
+/*
+ * Unbind LWLock from tracked dbid.
+ */
+void
+LWLockUnbindEntry(Oid dbid)
+{
+	int			i;
+
+	for (i = 0; i < db_track_count; ++i)
+	{
+		if (bloom_locks[i].dbid == dbid)
+		{
+			bloom_locks[i].dbid = InvalidOid;
+			break;
+		}
+	}
+
+	if (i == db_track_count && pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
+		pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
 }

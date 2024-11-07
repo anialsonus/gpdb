@@ -76,7 +76,7 @@ hook_create(RelFileNodeBackend rnode)
 	if (!non_committed_bloom)
 	{
 		non_committed_bloom =
-			MemoryContextAlloc(TopMemoryContext, FULL_BLOOM_SIZE(bloom_size));
+			MemoryContextAlloc(TopMemoryContext, full_bloom_size(bloom_size));
 		bloom_init(bloom_size, non_committed_bloom);
 		non_committed_dbid = rnode.node.dbNode;
 		RegisterXactCallbackOnce(xact_end_create_callback, NULL);

@@ -1,4 +1,4 @@
-## arenadata_toolkit - database objects tracking extenstion for GPDB
+## arenadata_toolkit - database objects tracking extension for GPDB
 
 `arenadata_toolkit` starting from version 1.7 represents a GPDB extension that efficiently tracks file system changes (extend, truncate, create, unlink operations) using space-efficient Bloom filters stored in shared memory. This extension is particularly useful for monitoring and maintaining database files sizes across a distributed environment.
 

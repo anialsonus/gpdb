@@ -6,13 +6,10 @@
 
 #include "bloom_set.h"
 
-/* maximum number of hash functions that can be used in Bloom filter */
-#define MAX_BLOOM_HASH_FUNCS 6
-
 /*
  * Stores the Bloom filter in shared memory.
  * tracking_is_initialized - a flag indicating
- * bgworker binded dbids at startup/recovery.
+ * bgworker bound dbids at startup/recovery.
  *
  * tracking_error - sign of any internal error. If set,
  * blocks the work of track_getting procedure until cluster restart.
@@ -26,25 +23,9 @@ typedef struct
 	bloom_set_t bloom_set;
 }	tf_shared_state_t;
 
-/*
- * Locks on each bloom_entry_t in bloom_set.
- */
-typedef struct
-{
-	Oid			dbid;
-	LWLock	   *lock;
-}	tf_entry_lock_t;
-
 extern tf_shared_state_t *tf_shared_state;
-extern LWLock *bloom_set_lock;
-extern tf_entry_lock_t bloom_locks[];
-extern uint64 bloom_hash_seed;
-extern int	bloom_hash_num;
 
 void		tf_shmem_init(void);
 void		tf_shmem_deinit(void);
-LWLock	   *LWLockAcquireEntry(Oid dbid, LWLockMode mode);
-void		LWLockBindEntry(Oid dbid);
-void		LWLockUnbindEntry(Oid dbid);
 
 #endif   /* TF_SHMEM_H */

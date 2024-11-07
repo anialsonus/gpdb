@@ -16,7 +16,7 @@ CREATE DATABASE tracking_db1;
 CREATE EXTENSION arenadata_toolkit;
 
 -- 1. Test getting track on not registered database;
-SELECT * FROM arenadata_toolkit.tracking_get_track();
+SELECT * FROM arenadata_toolkit.tables_track;
 
 SELECT pg_sleep(current_setting('arenadata_toolkit.tracking_worker_naptime_sec')::int * 2);
 SELECT arenadata_toolkit.tracking_register_db();
@@ -28,8 +28,8 @@ SELECT is_triggered FROM arenadata_toolkit.is_initial_snapshot_triggered;
 
 -- 3. If user hasn't registered any schema, the default schemas are used.
 -- See arenadata_toolkit_guc.c. At commit the bloom filter is cleared. The next
--- call of tracking_get_track() will return nothing if database is not modified in between. 
-SELECT count(*) FROM arenadata_toolkit.tracking_get_track();
+-- track acquisition will return nothing if database is not modified in between. 
+SELECT count(*) FROM arenadata_toolkit.tables_track;
 
 -- 4. Create table in specific schema and register that schema.
 CREATE TABLE arenadata_toolkit.tracking_t1 (i INT)
@@ -39,17 +39,17 @@ SELECT arenadata_toolkit.tracking_register_schema('arenadata_toolkit');
 
 -- Getting the track. Only created table with size 0 is expected;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
 -- 5. Test data extending event. Bloom should capture it.
 INSERT INTO arenadata_toolkit.tracking_t1 SELECT generate_series(1,100000);
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
 -- 6. Dropping table. The track shows only relfilenodes without names and other additional info with status 'd'.
 DROP TABLE arenadata_toolkit.tracking_t1;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
 -- 8. Test actions on commit and rollback
 CREATE TABLE arenadata_toolkit.tracking_t1 (i INT)
@@ -59,33 +59,33 @@ INSERT INTO arenadata_toolkit.tracking_t1 SELECT generate_series(1,100000);
 -- If the wrapping transaction rollbacks, the Bloom filter is not cleared up.
 BEGIN;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 ROLLBACK;
 
 -- If commits, filter is cleared.
 BEGIN;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 COMMIT;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
--- 9. Test repetitive track call within the same transaction. In case of
--- rollback only first changes should be present.
+-- 9. Test repetitive track call within the same transaction. All the
+-- calls should return the same relation set.
 INSERT INTO arenadata_toolkit.tracking_t1 SELECT generate_series(1,10000);
 BEGIN;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
 CREATE TABLE arenadata_toolkit.tracking_t2 (j BIGINT) DISTRIBUTED BY (j);
 INSERT INTO arenadata_toolkit.tracking_t2 SELECT generate_series(1,10000);
 INSERT INTO arenadata_toolkit.tracking_t1 SELECT generate_series(1,10000);
 
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 ROLLBACK;
 SELECT relname, size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
 -- 10. Test relkind filtering.
 CREATE TABLE arenadata_toolkit.tracking_t1 (i INT)
@@ -98,7 +98,7 @@ SELECT arenadata_toolkit.tracking_register_schema('pg_aoseg');
 SELECT arenadata_toolkit.tracking_set_relkinds('o,i');
 
 SELECT  size, state, segid, relkind, relstorage
-FROM arenadata_toolkit.tracking_get_track();
+FROM arenadata_toolkit.tables_track;
 
 DROP TABLE arenadata_toolkit.tracking_t1;
 

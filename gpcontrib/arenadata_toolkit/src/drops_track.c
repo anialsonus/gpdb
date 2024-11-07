@@ -41,8 +41,8 @@ typedef struct
 }	drops_track_t;
 
 static shmem_startup_hook_type next_shmem_startup_hook = NULL;
-static drops_track_t * drops_track;
-LWLock *drops_track_lock;
+static drops_track_t *drops_track;
+LWLock	   *drops_track_lock;
 
 static Size
 drops_track_calc_size()
@@ -104,8 +104,9 @@ drops_track_deinit(void)
 	shmem_startup_hook = next_shmem_startup_hook;
 }
 
-/* Find unused node i linked list. */
-static drops_track_node_t * find_empty_node()
+/* Find unused node in linked list. */
+static drops_track_node_t *
+find_empty_node()
 {
 	drops_track_node_t *track_node = NULL;
 

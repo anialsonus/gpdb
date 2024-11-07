@@ -1,17 +1,24 @@
 /*
  * Simple bloom filter without using postgres primitives.
  */
+
+#include <math.h>
+
+#include "arenadata_toolkit_guc.h"
 #include "bloom.h"
 #include "hashimpl.h"
 #include "tf_shmem.h"
 
+uint64		bloom_hash_seed;
+int			bloom_hash_num;
+
 static inline uint32
 mod_m(uint32 val, uint64 m)
 {
-	Assert(m <= PG_UINT32_MAX + UINT64CONST(1));
-	Assert(((m - 1) & m) == 0);
-
-	return val & (m - 1);
+	if (((m - 1) & m) == 0)
+		return val & (m - 1);
+	else
+		return val % m;
 }
 
 /*
@@ -85,7 +92,7 @@ bloom_isset(bloom_t * bloom, Oid relnode)
 
 	for (int i = 0; i < bloom_hash_num; ++i)
 	{
-		if (!(bloom->map[hashes[i] >> 3] & (1 << (hashes[i] & 7))))
+		if (!(bloom->current_bloom[hashes[i] >> 3] & (1 << (hashes[i] & 7))))
 			return false;
 	}
 	return true;
@@ -110,7 +117,7 @@ bloom_set_bits(bloom_t * bloom, Oid relnode)
 	tracking_hashes(relnode, bloom->size, hashes);
 	for (int i = 0; i < bloom_hash_num; ++i)
 	{
-		bloom->map[hashes[i] >> 3] |= 1 << (hashes[i] & 7);
+		bloom->current_bloom[hashes[i] >> 3] |= 1 << (hashes[i] & 7);
 	}
 }
 
@@ -118,36 +125,98 @@ void
 bloom_init(const uint32 bloom_size, bloom_t * bloom)
 {
 	bloom->size = bloom_size;
+	bloom->current_bloom = bloom->map;
 	bloom_clear(bloom);
+}
+
+/*
+ * Initialize optimal Bloom filter parameters
+ *
+ * This function calculates and sets optimal parameters for the Bloom filter
+ * based on established widespread principles.
+ *
+ * Calculates the optimal number of hash functions using the formula:
+ * k = (m/n)ln(2), which minimizes the false positive probability
+ * p = (1 - e^(-kn/m))^k.
+ * where:
+ * - m = total_bits (size of bit array)
+ * - n = TOTAL_ELEMENTS (expected number of insertions)
+ *
+ * Initializes bloom_hash_seed with a random value to prevent deterministic
+ * hash collisions and ensure independent hash distributions across runs.
+ */
+void
+init_bloom_invariants(void)
+{
+	int			k = rint(log(2.0) * (bloom_size * 8) / TOTAL_ELEMENTS);
+
+	bloom_hash_num = Max(1, Min(k, MAX_BLOOM_HASH_FUNCS));
+	bloom_hash_seed = (uint64) random();
 }
 
 void
 bloom_set_all(bloom_t * bloom)
 {
-	memset(bloom->map, 0xFF, bloom->size);
+	memset(bloom->current_bloom, 0xFF, bloom->size);
 	bloom->is_set_all = 1;
 }
 
 void
 bloom_clear(bloom_t * bloom)
 {
-	memset(bloom->map, 0, bloom->size);
+	memset(bloom->current_bloom, 0, bloom->size);
 	bloom->is_set_all = 0;
 }
 
 void
 bloom_merge(bloom_t * dst, bloom_t * src)
 {
-	for (uint32_t i = 0; i < dst->size; i++)
-		dst->map[i] |= src->map[i];
 	if (src->is_set_all)
+	{
+		memset(dst->current_bloom, 0xFF, dst->size);
 		dst->is_set_all = src->is_set_all;
+		return;
+	}
+
+	for (uint32 i = 0; i < dst->size; i++)
+		dst->current_bloom[i] |= src->current_bloom[i];
 }
 
 void
-bloom_copy(bloom_t * src, bloom_t * dest)
+bloom_copy(bloom_t * dest, bloom_t * src)
 {
 	dest->size = src->size;
-	memcpy(dest->map, src->map, src->size);
+	memcpy(dest->current_bloom, src->current_bloom, src->size);
 	dest->is_set_all = src->is_set_all;
+}
+
+void
+bloom_switch_current(bloom_t * bloom)
+{
+	uint8	   *map_base = bloom->map;
+	uint8	   *map_off = bloom->map + bloom->size;
+
+	bloom->current_bloom = (bloom->current_bloom == map_base) ? map_off : map_base;
+	bloom->is_set_all = false;
+}
+
+uint8 *
+bloom_get_other(bloom_t * bloom)
+{
+	uint8	   *map_base = bloom->map;
+	uint8	   *map_off = bloom->map + bloom->size;
+
+	return (bloom->current_bloom == map_base) ? map_off : map_base;
+}
+
+void
+bloom_merge_internal(bloom_t * bloom)
+{
+	if (bloom->is_set_all)
+		return;
+
+	uint8	   *bloom_other = bloom_get_other(bloom);
+
+	for (uint32 i = 0; i < bloom->size; i++)
+		bloom->current_bloom[i] |= bloom_other[i];
 }
