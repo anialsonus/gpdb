@@ -217,14 +217,12 @@ void GPMemoryProtect_Shutdown()
  *		memory for use by a loadable module.
  *
  * This is only useful if called from the _PG_init hook of a library that
- * is loaded into the postmaster via shared_preload_libraries.  Once
- * shared memory has been allocated, calls will be ignored.
+ * is loaded into the postmaster via shared_preload_libraries.
  */
 void
 GPMemoryProtect_RequestAddinStartupMemory(Size size)
 {
-	// TODO: unkomment IsUnderPostmaster when moving to _PG_init
-	if (/* IsUnderPostmaster ||*/ !startup_mem_addin_request_allowed)
+	if (IsUnderPostmaster || !startup_mem_addin_request_allowed)
 		return;					/* too late */
 
 	startup_mem_total_addin_request = add_size(startup_mem_total_addin_request, size);

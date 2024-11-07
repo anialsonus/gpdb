@@ -79,7 +79,6 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/timeout.h"
-#include "utils/vmem_tracker.h"
 
 #include "utils/resource_manager.h"
 #include "utils/session_state.h"
@@ -696,20 +695,6 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 
 		InitGPOPT();
 	}
-
-	// TODO: move to _PG_init when ORCA shared lib skeleton is ready
-
-	/* When compile with ORCA it will commit 6MB more */
-	Size orca_mem = 6L << BITS_IN_MB;
-	/*
-	 * When optimizer_use_gpdb_allocators is on, at least 2MB of above will be
-	 * tracked by vmem tracker later, so do not recount them.  This GUC is not
-	 * available until gpdb 5.1.0 .
-	 */
-	if (optimizer_use_gpdb_allocators)
-		orca_mem -= 2L << BITS_IN_MB;
-
-	GPMemoryProtect_RequestAddinStartupMemory(orca_mem);
 #endif
 
 	/*
