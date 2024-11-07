@@ -264,8 +264,7 @@ CTranslatorScalarToDXL::TranslateVarToDXL(
 //---------------------------------------------------------------------------
 CDXLNode *
 CTranslatorScalarToDXL::TranslateParamToDXL(
-	const Expr *expr,
-	const CMappingVarColId *var_colid_mapping __attribute__((unused)))
+	const Expr *expr, const CMappingVarColId *var_colid_mapping GPOS_UNUSED)
 {
 	GPOS_ASSERT(IsA(expr, Param));
 	const Param *param = (Param *) expr;
@@ -2162,8 +2161,7 @@ CTranslatorScalarToDXL::TranslateArrayRefToDXL(
 
 CDXLNode *
 CTranslatorScalarToDXL::TranslateSortGroupClauseToDXL(
-	const Expr *expr,
-	const CMappingVarColId *var_colid_mapping __attribute__((unused)))
+	const Expr *expr, const CMappingVarColId *var_colid_mapping GPOS_UNUSED)
 {
 	GPOS_ASSERT(IsA(expr, SortGroupClause));
 	const SortGroupClause *sgc = (SortGroupClause *) expr;

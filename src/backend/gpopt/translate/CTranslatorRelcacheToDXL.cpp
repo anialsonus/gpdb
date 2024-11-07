@@ -659,10 +659,8 @@ CTranslatorRelcacheToDXL::RetrieveRel(CMemoryPool *mp, CMDAccessor *md_accessor,
 //
 //---------------------------------------------------------------------------
 CMDColumnArray *
-CTranslatorRelcacheToDXL::RetrieveRelColumns(CMemoryPool *mp,
-											 CMDAccessor *md_accessor
-											 __attribute__((unused)),
-											 Relation rel)
+CTranslatorRelcacheToDXL::RetrieveRelColumns(
+	CMemoryPool *mp, CMDAccessor *md_accessor GPOS_UNUSED, Relation rel)
 {
 	CMDColumnArray *mdcol_array = GPOS_NEW(mp) CMDColumnArray(mp);
 
@@ -885,7 +883,7 @@ CTranslatorRelcacheToDXL::RetrieveRelDistributionOpFamilies(CMemoryPool *mp,
 void
 CTranslatorRelcacheToDXL::AddSystemColumns(CMemoryPool *mp,
 										   CMDColumnArray *mdcol_array,
-										   Relation rel __attribute__((unused)))
+										   Relation rel GPOS_UNUSED)
 {
 	for (INT i = SelfItemPointerAttributeNumber;
 		 i > FirstLowInvalidHeapAttributeNumber; i--)
@@ -2612,9 +2610,11 @@ CTranslatorRelcacheToDXL::RetrieveRelStorageType(Relation rel)
 //
 //---------------------------------------------------------------------------
 void
-CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(
-	CMemoryPool *mp, Relation rel, OID oid __attribute__((unused)),
-	ULongPtrArray **part_keys, CharPtrArray **part_types)
+CTranslatorRelcacheToDXL::RetrievePartKeysAndTypes(CMemoryPool *mp,
+												   Relation rel,
+												   OID oid GPOS_UNUSED,
+												   ULongPtrArray **part_keys,
+												   CharPtrArray **part_types)
 {
 	GPOS_ASSERT(nullptr != rel);
 

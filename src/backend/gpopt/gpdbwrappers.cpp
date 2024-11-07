@@ -24,6 +24,7 @@
 
 #include <limits>  // std::numeric_limits
 
+#include "gpos/attributes.h"
 #include "gpos/base.h"
 #include "gpos/error/CAutoExceptionStack.h"
 #include "gpos/error/CException.h"
@@ -2301,17 +2302,16 @@ static int64 mdcache_invalidation_counter = 0;
 static int64 last_mdcache_invalidation_counter = 0;
 
 static void
-mdsyscache_invalidation_counter_callback(Datum arg __attribute__((unused)),
-										 int cacheid __attribute__((unused)),
-										 uint32 hashvalue
-										 __attribute__((unused)))
+mdsyscache_invalidation_counter_callback(Datum arg GPOS_UNUSED,
+										 int cacheid GPOS_UNUSED,
+										 uint32 hashvalue GPOS_UNUSED)
 {
 	mdcache_invalidation_counter++;
 }
 
 static void
-mdrelcache_invalidation_counter_callback(Datum arg __attribute__((unused)),
-										 Oid relid __attribute__((unused)))
+mdrelcache_invalidation_counter_callback(Datum arg GPOS_UNUSED,
+										 Oid relid GPOS_UNUSED)
 {
 	mdcache_invalidation_counter++;
 }

@@ -429,8 +429,7 @@ CTranslatorDXLToScalar::TranslateDXLScalarOpExprToScalar(
 //---------------------------------------------------------------------------
 Expr *
 CTranslatorDXLToScalar::TranslateDXLScalarParamToScalar(
-	const CDXLNode *scalar_param_node,
-	CMappingColIdVar *colid_var __attribute__((unused)))
+	const CDXLNode *scalar_param_node, CMappingColIdVar *colid_var GPOS_UNUSED)
 {
 	GPOS_ASSERT(nullptr != scalar_param_node);
 	CDXLScalarParam *scalar_param_dxl =

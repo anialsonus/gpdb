@@ -1156,7 +1156,7 @@ CQueryMutators::MakeTopLevelTargetEntry(TargetEntry *old_target_entry,
 //---------------------------------------------------------------------------
 CHAR *
 CQueryMutators::GetTargetEntryColName(TargetEntry *target_entry,
-									  Query *query __attribute__((unused)))
+									  Query *query GPOS_UNUSED)
 {
 	if (nullptr != target_entry->resname)
 	{

@@ -1778,7 +1778,7 @@ CTranslatorQueryToDXL::TranslateWindowSpecToDXL(
 CDXLNode *
 CTranslatorQueryToDXL::TranslateWindowToDXL(
 	CDXLNode *child_dxlnode, List *target_list, List *window_clause,
-	List *sort_clause __attribute__((unused)),
+	List *sort_clause GPOS_UNUSED,
 	IntToUlongMap *sort_col_attno_to_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping)
 {
@@ -3634,10 +3634,9 @@ CTranslatorQueryToDXL::NoteDistributionPolicyOpclasses(const RangeTblEntry *rte)
 //
 //---------------------------------------------------------------------------
 CDXLNode *
-CTranslatorQueryToDXL::TranslateValueScanRTEToDXL(const RangeTblEntry *rte,
-												  ULONG rt_index,
-												  ULONG current_query_level
-												  __attribute__((unused)))
+CTranslatorQueryToDXL::TranslateValueScanRTEToDXL(
+	const RangeTblEntry *rte, ULONG rt_index,
+	ULONG current_query_level GPOS_UNUSED)
 {
 	List *tuples_list = rte->values_lists;
 	GPOS_ASSERT(nullptr != tuples_list);
@@ -4753,8 +4752,7 @@ CTranslatorQueryToDXL::CreateDXLConstValueTrue()
 CDXLNode *
 CTranslatorQueryToDXL::TranslateGroupingFuncToDXL(
 	const Expr *expr, CBitSet *bitset,
-	UlongToUlongMap *grpcol_index_to_colid_mapping
-	__attribute__((unused))) const
+	UlongToUlongMap *grpcol_index_to_colid_mapping GPOS_UNUSED) const
 {
 	GPOS_ASSERT(IsA(expr, GroupingFunc));
 	GPOS_ASSERT(nullptr != grpcol_index_to_colid_mapping);
