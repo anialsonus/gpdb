@@ -4,6 +4,13 @@ FROM rockylinux:8.8 as base
 ARG CC=gcc
 ARG CXX=g++
 ARG SKIP_UNITTESTS=false
+ARG USE_CLANG_ANALYZER=false
+
+RUN \
+    if [ "$USE_CLANG_ANALYZER" = true ]; then \
+        export CFLAGS="-fsyntax-only --analyze"; \
+        export CXXFLAGS="-fsyntax-only --analyze"; \
+    fi
 
 # Install some basic utilities and build tools
 RUN dnf -y install 'dnf-command(config-manager)' && dnf config-manager --set-enabled devel && dnf makecache && dnf update -y ca-certificates && \
@@ -53,7 +60,6 @@ RUN mkdir /home/gpadmin/bin_gpdb
 ENV TARGET_OS_VERSION=8
 ENV TARGET_OS=rocky8
 ENV OUTPUT_ARTIFACT_DIR=bin_gpdb
-ENV SKIP_UNITTESTS=
 # To set default locale for unittests
 ENV LANG=en_US.UTF-8
 ENV CONFIGURE_FLAGS="--enable-debug-extensions --with-gssapi --enable-cassert --enable-debug --enable-depend"
