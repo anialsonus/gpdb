@@ -112,7 +112,7 @@ track_bump_version(uint32 ver)
 {
 	ver++;
 	if (ver == InvalidVersion || ver == ControlVersion)
-		ver += StartVersion - ver;
+		return StartVersion;
 
 	return ver;
 }
