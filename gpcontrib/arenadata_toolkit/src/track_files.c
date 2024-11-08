@@ -11,12 +11,13 @@
 #include "cdb/cdbvars.h"
 #include "cdb/cdbutil.h"
 #include "commands/dbcommands.h"
-#include "executor/spi.h"
+#include "commands/defrem.h"
 #include "fmgr.h"
 #include "funcapi.h"
 #include "libpq-fe.h"
 #include "miscadmin.h"
 #include "storage/shmem.h"
+#include "tcop/utility.h"
 #include "utils/relcache.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
@@ -30,6 +31,7 @@
 #include "dbsize.h"
 #include "file_hook.h"
 #include "tf_shmem.h"
+#include "track_files.h"
 
 PG_FUNCTION_INFO_V1(tracking_register_db);
 PG_FUNCTION_INFO_V1(tracking_register_db_main);
@@ -45,6 +47,9 @@ PG_FUNCTION_INFO_V1(tracking_is_initial_snapshot_triggered);
 PG_FUNCTION_INFO_V1(tracking_get_track);
 PG_FUNCTION_INFO_V1(tracking_track_version);
 
+/*
+ * Tuple description for result of tracking_get_track function.
+ */
 #define GET_TRACK_TUPDESC_LEN 9
 #define Anum_track_relid ((AttrNumber) 0)
 #define Anum_track_name ((AttrNumber) 1)
@@ -84,6 +89,9 @@ static bool callbackRegistered = false;
 static bool controlVersionUsed = false;
 static TransactionId local_xid = InvalidTransactionId;
 
+static bool isExecutorExplainMode = false;
+ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
+
 static inline void
 tf_check_shmem_error(void)
 {
@@ -97,6 +105,16 @@ static inline Oid
 get_dbid(Oid dbid)
 {
 	return (dbid == InvalidOid) ? MyDatabaseId : dbid;
+}
+
+static uint32
+track_bump_version(uint32 ver)
+{
+	ver++;
+	if (ver == InvalidVersion || ver == ControlVersion)
+		ver += StartVersion - ver;
+
+	return ver;
 }
 
 /*
@@ -114,7 +132,7 @@ xact_end_version_callback(XactEvent event, void *arg)
 	if (ctx.entry)
 	{
 		if (event == XACT_EVENT_COMMIT)
-			ctx.entry->master_version++;
+			ctx.entry->master_version = track_bump_version(ctx.entry->master_version);
 		pg_atomic_clear_flag(&ctx.entry->capture_in_progress);
 	}
 
@@ -405,7 +423,7 @@ tracking_get_track(PG_FUNCTION_ARGS)
 			if (version != ControlVersion)
 			{
 				bloom_clear(&bloom_ctx.entry->bloom);
-				bloom_ctx.entry->work_version = version + 1;
+				bloom_ctx.entry->work_version = track_bump_version(version);
 			}
 		}
 
@@ -1305,6 +1323,58 @@ tracking_is_segment_initialized(PG_FUNCTION_ARGS)
 	PG_RETURN_DATUM(result);
 }
 
+static bool
+is_explain_analyze(List *options)
+{
+	ListCell   *lc;
+
+	foreach(lc, options)
+	{
+		DefElem    *opt = (DefElem *) lfirst(lc);
+
+		if (pg_strcasecmp(opt->defname, "analyze") == 0)
+		{
+			return defGetBoolean(opt);
+		}
+	}
+	return false;
+}
+
+static void
+explain_detector_ProcessUtility(Node *parsetree,
+								const char *queryString,
+								ProcessUtilityContext context,
+								ParamListInfo params,
+								DestReceiver *dest,
+								char *completionTag)
+{
+	isExecutorExplainMode = false;
+
+	if (IsA(parsetree, ExplainStmt))
+	{
+		ExplainStmt *stmt = (ExplainStmt *) parsetree;
+
+		if (!is_explain_analyze(stmt->options))
+			isExecutorExplainMode = true;
+	}
+
+	if (next_ProcessUtility_hook)
+		next_ProcessUtility_hook(parsetree, queryString, context, params, dest, completionTag);
+}
+
+void
+track_setup_ProcessUtility_hook(void)
+{
+	next_ProcessUtility_hook = ProcessUtility_hook ? ProcessUtility_hook : standard_ProcessUtility;
+	ProcessUtility_hook = explain_detector_ProcessUtility;
+}
+
+void
+track_uninstall_ProcessUtility_hook(void)
+{
+	ProcessUtility_hook = next_ProcessUtility_hook == standard_ProcessUtility ? NULL : next_ProcessUtility_hook;
+}
+
 /*
  * This function should be used as argument for tracking_get_track function to
  * follow correct transaction semantics. Several calls of the function within
@@ -1316,6 +1386,13 @@ tracking_track_version(PG_FUNCTION_ARGS)
 {
 	int64		version = (int64) InvalidVersion;
 	TransactionId current_xid = GetCurrentTransactionIdIfAny();
+
+	if (Gp_role != GP_ROLE_DISPATCH)
+		ereport(ERROR,
+				(errmsg("Cannot acquire track using such query")));
+
+	if (isExecutorExplainMode)
+		PG_RETURN_INT64((int64) InvalidVersion);
 
 	tf_check_shmem_error();
 

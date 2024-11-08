@@ -11,6 +11,7 @@
 #include "drops_track.h"
 #include "file_hook.h"
 #include "tf_shmem.h"
+#include "track_files.h"
 
 void		_PG_init(void);
 void		_PG_fini(void);
@@ -24,6 +25,7 @@ _PG_init(void)
 	tf_guc_define();
 	tf_shmem_init();
 	file_hook_init();
+	track_setup_ProcessUtility_hook();
 
 	drops_track_init();
 
@@ -34,6 +36,7 @@ void
 _PG_fini(void)
 {
 	drops_track_deinit();
+	track_uninstall_ProcessUtility_hook();
 	file_hook_deinit();
 	tf_shmem_deinit();
 }

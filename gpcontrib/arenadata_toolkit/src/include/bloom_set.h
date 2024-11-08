@@ -15,12 +15,12 @@
 typedef struct
 {
 	Oid			dbid;			/* dbid of tracked database or InvalidOid */
-	uint32		master_version; /* Auxiliary counter, which is send from
+	uint32		master_version; /* Auxiliary counter, which is sent from
 								 * master to support transaction semantics */
 	uint32		work_version;	/* Auxiliary counter which represents current
 								 * state of bloom filter */
 	pg_atomic_flag capture_in_progress; /* indicates whether tracking
-										 * acquisition in progress */
+										 * acquisition is in progress */
 	bloom_t		bloom;			/* bloom filter itself */
 }	bloom_entry_t;
 
