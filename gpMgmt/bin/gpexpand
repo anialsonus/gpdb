@@ -776,7 +776,7 @@ class SegmentTemplate:
         localHostname = getLocalHostname()
         # NOTE: Currently, GP's scp transfers relative file paths into the home
         # directory by default.
-        pathsAreSame = (os.path.realpath(self.segTarFile) == os.path.join('/home/%s/' % getUserName(), self.schema_tar_file))
+        pathsAreSame = os.path.realpath(self.segTarFile) == os.path.join('/home/', getUserName(), self.schema_tar_file)
 
         for host in self.hosts:
             # If the source and the destination are the same on the local
