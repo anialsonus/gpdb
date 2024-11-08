@@ -707,21 +707,6 @@ gpos::BOOL WalkQueryTree(Query *query, bool (*walker)(), void *context,
 		 ? gpdb::MemCtxtAllocZeroAligned(CurrentMemoryContext, (sz)) \
 		 : gpdb::MemCtxtAllocZero(CurrentMemoryContext, (sz)))
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-/* With GCC, we can use a compound statement within an expression */
-#define NewNode(size, tag)                                                \
-	({                                                                    \
-		Node *_result;                                                    \
-		AssertMacro((size) >= sizeof(Node)); /* need the tag, at least */ \
-		_result = (Node *) Palloc0Fast(size);                             \
-		_result->type = (tag);                                            \
-		_result;                                                          \
-	})
-#else
-#pragma GCC diagnostic pop
-
 /*
  *	There is no way to dereference the palloc'ed pointer to assign the
  *	tag, and also return the pointer itself, so we need a holder variable.
@@ -734,7 +719,6 @@ extern PGDLLIMPORT Node *newNodeMacroHolder;
 	(AssertMacro((size) >= sizeof(Node)), /* need the tag, at least */ \
 	 newNodeMacroHolder = (Node *) Palloc0Fast(size),                  \
 	 newNodeMacroHolder->type = (tag), newNodeMacroHolder)
-#endif	// __GNUC__
 
 #define MakeNode(_type_) ((_type_ *) NewNode(sizeof(_type_), T_##_type_))
 

@@ -83,7 +83,6 @@
 #include "naucrates/md/IMDTypeInt4.h"
 #include "naucrates/traceflags/traceflags.h"
 
-#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 
 using namespace gpdxl;
@@ -6786,7 +6785,5 @@ CTranslatorDXLToPlStmt::IsIndexForOrderBy(
 	}
 	return false;
 }
-
-#pragma GCC diagnostic pop
 
 // EOF

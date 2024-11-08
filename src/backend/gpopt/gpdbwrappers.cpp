@@ -2513,6 +2513,8 @@ gpdb::GPDBMemoryContextDelete(MemoryContext context)
 	GP_WRAP_END;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 MemoryContext
 gpdb::GPDBAllocSetContextCreate()
 {
@@ -2534,6 +2536,7 @@ gpdb::GPDBAllocSetContextCreate()
 	GP_WRAP_END;
 	return nullptr;
 }
+#pragma GCC diagnostic pop
 
 bool
 gpdb::ExpressionReturnsSet(Node *clause)

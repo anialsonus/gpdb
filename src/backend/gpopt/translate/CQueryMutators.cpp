@@ -13,7 +13,6 @@
 //
 //---------------------------------------------------------------------------
 
-#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 #include "gpopt/translate/CQueryMutators.h"
 
@@ -1689,7 +1688,5 @@ CQueryMutators::ReassignSortClause(Query *top_level_query,
 	derived_table_query->limitOffset = nullptr;
 	derived_table_query->limitCount = nullptr;
 }
-
-#pragma GCC diagnostic pop
 
 // EOF
