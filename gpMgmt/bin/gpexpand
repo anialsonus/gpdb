@@ -781,11 +781,11 @@ class SegmentTemplate:
         for host in self.hosts:
             # If the source and the destination are the same on the local
             # machine, scp may corrupt the file. Don't overwrite it.
-                logger.debug('Skipping tarfile copy to %s' % host)
             if host in ('localhost', localHostname) and pathsAreSame:
+                logger.debug('Skipping tar file (%s) copy to %s' % (self.schema_tar_file, host))
                 continue
 
-            logger.debug('Copying tar file to %s' % host)
+            logger.debug('Copying tar file (%s) to %s' % (self.schema_tar_file, host))
             cpCmd = Scp(name='gpexpand distribute tar file to new hosts',
                         srcFile=self.schema_tar_file,
                         dstFile=self.segTarDir,
