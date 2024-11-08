@@ -115,13 +115,7 @@ private:
 		}
 
 		// copy ctor
-		SElem(const SElem &elem)
-		{
-			m_id = elem.m_id;
-			m_ulKey = elem.m_ulKey;
-		}
-
-		SElem &operator=(const SElem &) = default;
+		SElem(const SElem &elem) = default;
 
 #ifdef GPOS_DEBUG
 		static BOOL
