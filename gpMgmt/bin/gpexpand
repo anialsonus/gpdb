@@ -781,8 +781,8 @@ class SegmentTemplate:
         for host in self.hosts:
             # If the source and the destination are the same on the local
             # machine, scp may corrupt the file. Don't overwrite it.
-            if (host == 'localhost' or host == localHostname) and pathsAreSame:
                 logger.debug('Skipping tarfile copy to %s' % host)
+            if host in ('localhost', localHostname) and pathsAreSame:
                 continue
 
             logger.debug('Copying tar file to %s' % host)
