@@ -22,6 +22,7 @@ _PG_init(void)
 	if (!IS_QUERY_DISPATCHER())
 		return;
 
+	/* When compile with ORCA it will commit 6MB more */
 	Size orca_mem = 6L << BITS_IN_MB;
 	/*
 	 * When optimizer_use_gpdb_allocators is on, at least 2MB of above will be
