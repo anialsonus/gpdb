@@ -255,7 +255,7 @@ void
 GPMemoryProtect_TrackStartupMemory(void)
 {
 	MemoryAllocationStatus status;
-	int64		bytes = 0;
+	Size		bytes = 0;
 
 	Assert(gp_mp_inited);
 
@@ -272,8 +272,10 @@ GPMemoryProtect_TrackStartupMemory(void)
 	/* Leave some buffer for extensions like metrics_collector */
 	bytes += 2L << BITS_IN_MB;
 
+	/* Ensure we do not overflow when converting to signed */
+	Assert((int64)bytes > 0);
 	/* Register the startup memory */
-	status = VmemTracker_RegisterStartupMemory(bytes);
+	status = VmemTracker_RegisterStartupMemory((int64)bytes);
 	if (status != MemoryAllocation_Success)
 		gp_failed_to_alloc(status, 0, bytes);
 }
