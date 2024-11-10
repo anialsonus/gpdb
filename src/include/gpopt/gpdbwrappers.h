@@ -707,12 +707,13 @@ gpos::BOOL WalkQueryTree(Query *query, bool (*walker)(), void *context,
 		 ? gpdb::MemCtxtAllocZeroAligned(CurrentMemoryContext, (sz)) \
 		 : gpdb::MemCtxtAllocZero(CurrentMemoryContext, (sz)))
 
-static inline Node* NewNode(Size size, NodeTag tag)
+static inline Node *
+NewNode(Size size, NodeTag tag)
 {
-    AssertMacro(size >= sizeof(Node)); /* need the tag, at least */
-    Node *_result = (Node *) Palloc0Fast(size);
-    _result->type = tag;
-    return _result;
+	AssertMacro(size >= sizeof(Node)); /* need the tag, at least */
+	Node *_result = (Node *) Palloc0Fast(size);
+	_result->type = tag;
+	return _result;
 }
 
 #define MakeNode(_type_) ((_type_ *) NewNode(sizeof(_type_), T_##_type_))
