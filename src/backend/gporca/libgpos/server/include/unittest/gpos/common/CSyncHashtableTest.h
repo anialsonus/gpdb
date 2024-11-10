@@ -114,9 +114,6 @@ private:
 		{
 		}
 
-		// copy ctor
-		SElem(const SElem &elem) = delete;
-
 #ifdef GPOS_DEBUG
 		static BOOL
 		IsValid(const ULONG &ulKey)
