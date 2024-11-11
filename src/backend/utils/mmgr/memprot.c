@@ -265,12 +265,12 @@ GPMemoryProtect_TrackStartupMemory(void)
 	 */
 	bytes += 6L << BITS_IN_MB;
 
+	/* Leave some buffer for extensions like metrics_collector */
+	bytes += 2L << BITS_IN_MB;
+
 	/* freeze the addin request size and include it */
 	startup_mem_addin_request_allowed = false;
 	bytes = add_size(bytes, startup_mem_total_addin_request);
-
-	/* Leave some buffer for extensions like metrics_collector */
-	bytes += 2L << BITS_IN_MB;
 
 	/* Ensure we do not overflow when converting to signed */
 	Assert((int64)bytes > 0);
