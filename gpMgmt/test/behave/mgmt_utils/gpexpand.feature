@@ -810,7 +810,8 @@ Feature: expand the cluster by adding more segments
         Given the database is not running
         # need to remove this log because otherwise SCAN_LOG may pick up a previous error/warning in the log
         And the user runs command "rm -rf ~/gpAdminLogs/gpinitsystem*"
-        And a working directory of the test as '/data/gpdata/gpexpand'
+        # gpconfigurenewsegment scp's tar file to home by default
+        And a working directory of the test as '/home/gpadmin'
         And a temporary directory under "/data/gpdata/gpexpand/expandedData" to expand into
         And the cluster is generated with "1" primaries only
         And database "gptest" exists
