@@ -71,7 +71,8 @@ class Gpexpand:
         fns = filter(lambda fn: not fn.endswith(".ts"),
                      glob.glob('%s/gpexpand_inputfile*' % self.working_directory))
         input_files = sorted(fns)
-        return run_gpcommand(self.context, "gpexpand -i %s %s" % (input_files[-1], additional_params))
+        change_cwd = ('cd %s' % self.working_directory) if self.working_directory else ''
+        return run_gpcommand(self.context, "gpexpand -i %s %s" % (input_files[-1], additional_params), change_cwd)
 
     def get_redistribute_status(self):
         sql = 'select status from gpexpand.status order by updated desc limit 1'
