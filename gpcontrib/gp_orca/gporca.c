@@ -3,6 +3,10 @@
 #include "cdb/cdbvars.h"
 #include "miscadmin.h"
 #include "utils/builtins.h"
+#include "utils/memutils.h"
+
+extern void InitGPOPT();
+extern void TerminateGPOPT();
 
 PG_MODULE_MAGIC;
 
@@ -19,10 +23,29 @@ _PG_init(void)
 
 	if (!IS_QUERY_DISPATCHER())
 		return;
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		/* Initialize GPOPT */
+		OptimizerMemoryContext = AllocSetContextCreate(TopMemoryContext,
+													"GPORCA Top-level Memory Context",
+													ALLOCSET_DEFAULT_MINSIZE,
+													ALLOCSET_DEFAULT_INITSIZE,
+													ALLOCSET_DEFAULT_MAXSIZE);
+
+		InitGPOPT();
+	}
 }
 
 void
 _PG_fini(void)
 {
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		TerminateGPOPT();
+
+		if (OptimizerMemoryContext != NULL)
+			MemoryContextDelete(OptimizerMemoryContext);
+	}
 }
 
