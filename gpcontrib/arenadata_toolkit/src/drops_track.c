@@ -11,8 +11,6 @@
 
 #include "arenadata_toolkit_guc.h"
 
-#define TRACK_NODE_GET(track, i) (void *)(track->nodes + i * sizeof(drops_track_node_t));
-
 /*
  * Drop track element. Stores just relfilenode
  * and dbid.
@@ -33,16 +31,21 @@ typedef struct
 /* Drops track */
 typedef struct
 {
-	dlist_head	head;
+	dlist_head	used_head;
+	dlist_head	free_head;
 	uint32_t	used_count;		/* count of used nodes */
-	int			unused_idx;		/* next unused idx or -1 if unknown; for
-								 * faster search */
 	char		nodes[FLEXIBLE_ARRAY_MEMBER];	/* array of drops_track_node_t */
 }	drops_track_t;
 
 static shmem_startup_hook_type next_shmem_startup_hook = NULL;
 static drops_track_t *drops_track;
 LWLock	   *drops_track_lock;
+
+static inline drops_track_node_t *
+track_node_get(drops_track_t * track, int i)
+{
+	return (drops_track_node_t *) (track->nodes + i * sizeof(drops_track_node_t));
+}
 
 static Size
 drops_track_calc_size()
@@ -68,15 +71,16 @@ drops_track_hook(void)
 	if (!found)
 	{
 		drops_track->used_count = 0;
-		drops_track->unused_idx = 0;
-		dlist_init(&drops_track->head);
+		dlist_init(&drops_track->used_head);
+		dlist_init(&drops_track->free_head);
 
 		for (uint32_t i = 0; i < drops_count; i++)
 		{
-			drops_track_node_t *track_node = TRACK_NODE_GET(drops_track, i);
+			drops_track_node_t *track_node = track_node_get(drops_track, i);
 
 			track_node->relfileNode.relNode = InvalidOid;
 			track_node->relfileNode.dbNode = InvalidOid;
+			dlist_push_tail(&drops_track->free_head, &track_node->node);
 		}
 	}
 
@@ -104,36 +108,13 @@ drops_track_deinit(void)
 	shmem_startup_hook = next_shmem_startup_hook;
 }
 
-/* Find unused node in linked list. */
 static drops_track_node_t *
-find_empty_node()
+get_free_node(void)
 {
-	drops_track_node_t *track_node = NULL;
+	if (dlist_is_empty(&drops_track->free_head))
+		return NULL;
 
-	if (drops_track->unused_idx >= 0)
-	{
-		track_node = TRACK_NODE_GET(drops_track, drops_track->unused_idx);
-		drops_track->unused_idx++;
-		if (drops_track->unused_idx >= drops_count)
-			drops_track->unused_idx = -1;
-		else
-		{
-			drops_track_node_t *unused_node = TRACK_NODE_GET(drops_track, drops_track->unused_idx);
-
-			if (unused_node->relfileNode.relNode != InvalidOid)
-				drops_track->unused_idx = -1;
-		}
-	}
-	else
-	{
-		for (uint32_t i = 0; i < drops_count; i++)
-		{
-			track_node = TRACK_NODE_GET(drops_track, i);
-			if (track_node->relfileNode.relNode == InvalidOid)
-				break;
-		}
-	}
-	return track_node;
+	return (drops_track_node_t *) dlist_pop_head_node(&drops_track->free_head);
 }
 
 /* Add relNode to track. Old node is dropped if no space */
@@ -146,19 +127,22 @@ drops_track_add(RelFileNode relfileNode)
 
 	if (drops_track->used_count >= drops_count)
 	{
-		track_node = (drops_track_node_t *) dlist_pop_head_node(&drops_track->head);
+		track_node = (drops_track_node_t *) dlist_pop_head_node(&drops_track->used_head);
 		elog(DEBUG1, "No space for drop track. Oldest node removed (%d).", track_node->relfileNode.relNode);
 	}
 	else
 	{
-		track_node = find_empty_node();
+		track_node = get_free_node();
 		drops_track->used_count++;
 		Assert(track_node);
 	}
 
 	track_node->relfileNode.relNode = relfileNode.relNode;
 	track_node->relfileNode.dbNode = relfileNode.dbNode;
-	dlist_push_tail(&drops_track->head, &track_node->node);
+	dlist_push_tail(&drops_track->used_head, &track_node->node);
+
+	elog(DEBUG1, "added relNode %u for dbNode %u to drops track",
+		 relfileNode.relNode, relfileNode.dbNode);
 
 	LWLockRelease(drops_track_lock);
 }
@@ -178,11 +162,10 @@ drops_track_move(Oid dbid)
 		return NIL;
 	}
 
-	dlist_foreach_modify(iter, &drops_track->head)
+	dlist_foreach_modify(iter, &drops_track->used_head)
 	{
 		drops_track_node_t *track_node = (drops_track_node_t *) iter.cur;
 
-		/* newest in head, oldest in tail */
 		if (track_node->relfileNode.dbNode == dbid)
 		{
 			oids = lcons_oid(track_node->relfileNode.relNode, oids);
@@ -190,44 +173,11 @@ drops_track_move(Oid dbid)
 			track_node->relfileNode.relNode = InvalidOid;
 			track_node->relfileNode.dbNode = InvalidOid;
 			dlist_delete(&track_node->node);
+			dlist_push_tail(&drops_track->free_head, &track_node->node);
 		}
 	}
 
 	LWLockRelease(drops_track_lock);
 
 	return oids;
-}
-
-/* Return extracted dropped relfilenodes.
- * Old nodes are removed if no space.
- */
-void
-drops_track_move_undo(List *oids, Oid dbid)
-{
-	ListCell   *cell;
-
-	if (oids == NIL)
-		return;
-
-	LWLockAcquire(drops_track_lock, LW_EXCLUSIVE);
-
-	foreach(cell, oids)
-	{
-		Oid			oid = lfirst_oid(cell);
-		drops_track_node_t *track_node;
-
-		if (drops_track->used_count >= drops_count)
-		{
-			elog(DEBUG1, "No space for move back. Oldest node removed (%d).", oid);
-			continue;
-		}
-
-		track_node = find_empty_node();
-		drops_track->used_count++;
-		track_node->relfileNode.relNode = oid;
-		track_node->relfileNode.dbNode = dbid;
-		dlist_push_head(&drops_track->head, &track_node->node);
-	}
-
-	LWLockRelease(drops_track_lock);
 }
