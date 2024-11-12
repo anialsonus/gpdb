@@ -313,8 +313,8 @@ static bool is_ipv6_supported(void) {
 	if (sockfd < 0 && errno == EAFNOSUPPORT)
 		return false;
 
-	struct sockaddr_in6 socket_struct = {.sin6_family = AF_INET6, .sin6_addr = in6addr_loopback};
-	int res = bind(sockfd, (struct sockaddr*) &socket_struct, sizeof(socket_struct));
+	const struct sockaddr_in6 socket_struct = {.sin6_family = AF_INET6, .sin6_addr = in6addr_loopback};
+	int res = bind(sockfd, (const struct sockaddr *) &socket_struct, sizeof(socket_struct));
 	if (res < 0 && errno == EADDRNOTAVAIL)
 		return false;
 
