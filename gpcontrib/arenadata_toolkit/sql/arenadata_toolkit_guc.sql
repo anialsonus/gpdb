@@ -28,9 +28,6 @@ SHOW arenadata_toolkit.tracking_is_db_tracked;
 SELECT datname, setconfig FROM pg_db_role_setting JOIN pg_database ON
 setdatabase=oid WHERE datname=current_database();
 
-\c -;
-\c tracking1;
-
 SELECT arenadata_toolkit.tracking_register_db();
 
 SHOW arenadata_toolkit.tracking_is_db_tracked;
@@ -39,9 +36,6 @@ SELECT datname, setconfig FROM pg_db_role_setting JOIN pg_database ON
 setdatabase=oid WHERE datname=current_database();
 
 SELECT arenadata_toolkit.tracking_unregister_db();
-
-\c -;
-\c tracking1;
 
 SHOW arenadata_toolkit.tracking_is_db_tracked;
 
