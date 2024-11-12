@@ -1,0 +1,57 @@
+-- start_matchsubs
+-- m/ERROR:  Track for database \d+ is being acquired in other transaction/
+-- s/\d+/XXX/g
+-- end_matchsubs
+-- Test concurrent track acquisition.
+1: CREATE EXTENSION IF NOT EXISTS arenadata_toolkit;
+CREATE
+1: SELECT arenadata_toolkit.tracking_register_db();
+ tracking_register_db 
+----------------------
+ t                    
+(1 row)
+1: SELECT arenadata_toolkit.tracking_trigger_initial_snapshot();
+ tracking_trigger_initial_snapshot 
+-----------------------------------
+ t                                 
+(1 row)
+1: BEGIN;
+BEGIN
+1: SELECT tt.segid, count(*) FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid;
+ segid | count 
+-------+-------
+ 1     | 264   
+ 0     | 264   
+ 2     | 264   
+ -1    | 264   
+(4 rows)
+
+2: SELECT tt.segid, count(*) FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid;
+ERROR:  Track for database 24798 is being acquired in other transaction
+
+1: ROLLBACK;
+ROLLBACK
+
+2: SELECT tt.segid, count(*) FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid;
+ segid | count 
+-------+-------
+ 1     | 264   
+ 0     | 264   
+ 2     | 264   
+ -1    | 264   
+(4 rows)
+
+1: SELECT arenadata_toolkit.tracking_unregister_db();
+ tracking_unregister_db 
+------------------------
+ t                      
+(1 row)
+1q: ... <quitting>
+2q: ... <quitting>
+
+!\retcode gpconfig -r shared_preload_libraries;
+(exited with code 0)
+!\retcode gpconfig -r arenadata_toolkit.tracking_worker_naptime_sec;
+(exited with code 0)
+!\retcode gpstop -raq -M fast;
+(exited with code 0)
