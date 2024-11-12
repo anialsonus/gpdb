@@ -130,6 +130,7 @@ extern int	CommitDelay;
 extern int	CommitSiblings;
 extern char *default_tablespace;
 extern char *temp_tablespaces;
+extern char *temp_spill_files_tablespaces;
 extern bool ignore_checksum_failure;
 extern bool synchronize_seqscans;
 
@@ -3781,6 +3782,18 @@ static struct config_string ConfigureNamesString[] =
 	},
 
 	{
+		{"temp_spill_files_tablespaces", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Sets the tablespace(s) to use for temporary files."),
+			gettext_noop("This setting takes precedence over temp_tablespaces "
+						 "for temporary files."),
+			GUC_LIST_INPUT | GUC_LIST_QUOTE
+		},
+		&temp_spill_files_tablespaces,
+		"",
+		check_temp_tablespaces, assign_temp_spill_files_tablespaces, NULL
+	},
+
+	{
 		{"dynamic_library_path", PGC_SUSET, CLIENT_CONN_OTHER,
 			gettext_noop("Sets the path for dynamically loadable modules."),
 			gettext_noop("If a dynamically loadable module needs to be opened and "
@@ -7116,7 +7129,7 @@ set_config_option(const char *name, const char *value,
 				return 0;
 			}
 			/* fall through to process the same as PGC_BACKEND */
-			/* FALLTHROUGH */
+			fallthru;
 		case PGC_BACKEND:
 			if (context == PGC_SIGHUP)
 			{
@@ -8572,7 +8585,7 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 		case VAR_SET_DEFAULT:
 			if (stmt->is_local)
 				WarnNoTransactionBlock(isTopLevel, "SET LOCAL");
-			/* fall through */
+			fallthru;
 		case VAR_RESET:
 			if (strcmp(stmt->name, "transaction_isolation") == 0 &&
 				Gp_role != GP_ROLE_EXECUTE)
