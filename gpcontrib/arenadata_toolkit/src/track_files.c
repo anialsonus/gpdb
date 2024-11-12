@@ -645,6 +645,9 @@ is_initialized()
 	CdbPgResults cdb_pgresults = {NULL, 0};
 	bool		all_inited = true;
 
+	if (pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_is_initialized))
+		return false;
+
 	CdbDispatchCommand("select * from arenadata_toolkit.tracking_is_segment_initialized()", 0, &cdb_pgresults);
 
 	for (int i = 0; i < cdb_pgresults.numResults; i++)
@@ -739,7 +742,7 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 
 	if (Gp_role == GP_ROLE_DISPATCH && !is_initialized())
 		ereport(ERROR,
-				(errmsg("[arenadata_toolkit] Cannot register database before workers initialize tracking"),
+				(errmsg("[arenadata_toolkit] Cannot unregister database before workers initialize tracking"),
 				 errhint("Wait arenadata_toolkit.tracking_worker_naptime_sec and try again")));
 
 	elog(LOG, "[arenadata_toolkit] unregistering database %u from tracking", dbid);

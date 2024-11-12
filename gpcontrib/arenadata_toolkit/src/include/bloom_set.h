@@ -45,7 +45,7 @@ typedef struct
  */
 typedef struct
 {
-	Oid			dbid;
+	void	   *entry;			/* It's a key that binds lock to bloom_entry */
 	LWLock	   *lock;
 }	tf_entry_lock_t;
 
@@ -64,7 +64,5 @@ bool		bloom_set_is_all_bits_triggered(Oid dbid);
 bloom_op_ctx_t bloom_set_get_entry(Oid dbid, LWLockMode s_mode, LWLockMode e_mode);
 void		bloom_set_release(bloom_op_ctx_t * ctx);
 LWLock	   *LWLockAcquireEntry(Oid dbid, LWLockMode mode);
-void		LWLockBindEntry(Oid dbid);
-void		LWLockUnbindEntry(Oid dbid);
 
 #endif   /* BLOOM_SET_H */

@@ -45,20 +45,6 @@ bloom_entry_init(const uint32_t bloom_size, bloom_entry_t * bloom_entry)
 	bloom_init(bloom_size, &bloom_entry->bloom);
 }
 
-/*
- * Separate initialization of LWLocks;
- */
-static void
-init_lwlocks(void)
-{
-	bloom_set_lock = LWLockAssign();
-
-	for (int i = 0; i < db_track_count; ++i)
-	{
-		bloom_locks[i].lock = LWLockAssign();
-		bloom_locks[i].dbid = InvalidOid;
-	}
-}
 
 void
 bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size)
@@ -68,14 +54,17 @@ bloom_set_init(const uint32_t bloom_count, const uint32_t bloom_size)
 	bloom_set->bloom_count = bloom_count;
 	bloom_set->bloom_size = bloom_size;
 
+	bloom_set_lock = LWLockAssign();
+
 	for (uint32_t i = 0; i < bloom_count; i++)
 	{
 		bloom_entry_t *bloom_entry = bloom_entry_get(bloom_set, i);
 
 		bloom_entry_init(bloom_size, bloom_entry);
+		bloom_locks[i].lock = LWLockAssign();
+		bloom_locks[i].entry = (void *) bloom_entry;
 	}
 
-	init_lwlocks();
 	init_bloom_invariants();
 }
 
@@ -133,7 +122,6 @@ bloom_set_bind(Oid dbid)
 	bloom_entry->master_version = StartVersion;
 	bloom_entry->work_version = StartVersion;
 	pg_atomic_init_flag(&bloom_entry->capture_in_progress);
-	LWLockBindEntry(dbid);
 	LWLockRelease(bloom_set_lock);
 
 	return true;
@@ -181,7 +169,6 @@ bloom_set_unbind(Oid dbid)
 	}
 	bloom_entry->dbid = InvalidOid;
 	bloom_clear(&bloom_entry->bloom);
-	LWLockUnbindEntry(dbid);
 	LWLockRelease(bloom_set_lock);
 }
 
@@ -284,7 +271,9 @@ LWLockAcquireEntry(Oid dbid, LWLockMode mode)
 {
 	for (int i = 0; i < db_track_count; ++i)
 	{
-		if (bloom_locks[i].dbid == dbid)
+		bloom_entry_t *bloom_entry = (bloom_entry_t *) (bloom_locks[i].entry);
+
+		if (bloom_entry->dbid == dbid)
 		{
 			LWLockAcquire(bloom_locks[i].lock, mode);
 			return bloom_locks[i].lock;
@@ -292,46 +281,4 @@ LWLockAcquireEntry(Oid dbid, LWLockMode mode)
 	}
 
 	return NULL;
-}
-
-/*
- * Bind LWLock to tracked dbid.
- */
-void
-LWLockBindEntry(Oid dbid)
-{
-	int			i;
-
-	for (i = 0; i < db_track_count; ++i)
-	{
-		if (bloom_locks[i].dbid == InvalidOid)
-		{
-			bloom_locks[i].dbid = dbid;
-			break;
-		}
-	}
-
-	if (i == db_track_count && pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
-		pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
-}
-
-/*
- * Unbind LWLock from tracked dbid.
- */
-void
-LWLockUnbindEntry(Oid dbid)
-{
-	int			i;
-
-	for (i = 0; i < db_track_count; ++i)
-	{
-		if (bloom_locks[i].dbid == dbid)
-		{
-			bloom_locks[i].dbid = InvalidOid;
-			break;
-		}
-	}
-
-	if (i == db_track_count && pg_atomic_unlocked_test_flag(&tf_shared_state->tracking_error))
-		pg_atomic_test_set_flag(&tf_shared_state->tracking_error);
 }
