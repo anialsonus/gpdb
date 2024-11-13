@@ -181,7 +181,7 @@ FTSReplicationStatusDrop(const char* app_name)
  * FTSReplicationStatusLock should be held before call this function.
  */
 FTSReplicationStatus *
-RetrieveFTSReplicationStatus(const char *app_name, bool skip_err)
+RetrieveFTSReplicationStatus(const char *app_name, bool skip_warn)
 {
 	/* FTSRepStatusCtl should be set already. */
 	Assert(FTSRepStatusCtl != NULL);
@@ -196,8 +196,8 @@ RetrieveFTSReplicationStatus(const char *app_name, bool skip_err)
 			return slot;
 	}
 
-	if (!skip_err)
-		ereport(ERROR,
+	if (!skip_warn)
+		ereport(WARNING,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
 				 errmsg("FTSReplicationStatus \"%s\" does not exist", app_name)));
 	return NULL;
@@ -249,9 +249,18 @@ FTSReplicationStatusUpdateForWalState(const char *app_name, WalSndState state)
 
 	LWLockAcquire(FTSReplicationStatusLock, LW_SHARED);
 
-	replication_status = RetrieveFTSReplicationStatus(app_name, false /*skip_err*/);
+	replication_status = RetrieveFTSReplicationStatus(app_name, false /*skip_warn*/);
 
-	Assert(replication_status);
+	/*
+	 * FTS and WAL working independently, it's still possible a condition when
+	 * FTS command to stop replication comes after replica starts. In this
+	 * case replication status slot can be already empty.
+	 */
+	if (replication_status == NULL)
+	{
+		LWLockRelease(FTSReplicationStatusLock);
+		return;
+	}
 
 	bool is_up;
 	SpinLockAcquire(&MyWalSnd->mutex);
@@ -303,7 +312,7 @@ FTSReplicationStatusMarkDisconnectForReplication(const char *app_name)
 	 * FTS may already mark the mirror down and free the replication status.
 	 * For this case, a NULL pointer will return.
 	 */
-	replication_status = RetrieveFTSReplicationStatus(app_name, true /* skip_err */);
+	replication_status = RetrieveFTSReplicationStatus(app_name, true /* skip_warn */);
 
 	/* if replication_status is NULL, do nothing */
 	FTSReplicationStatusMarkDisconnect(replication_status);
@@ -454,7 +463,7 @@ FTSGetReplicationDisconnectTime(const char *app_name)
 	FTSReplicationStatus	   *replication_status = NULL;
 
 	LWLockAcquire(FTSReplicationStatusLock, LW_SHARED);
-	replication_status = RetrieveFTSReplicationStatus(app_name, true /* skip_err */);
+	replication_status = RetrieveFTSReplicationStatus(app_name, true /* skip_warn */);
 	if (replication_status)
 	{
 		attempt_replication_times = FTSReplicationStatusRetrieveAttempts(replication_status);
