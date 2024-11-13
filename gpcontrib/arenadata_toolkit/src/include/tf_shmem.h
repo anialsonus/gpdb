@@ -11,15 +11,11 @@
  * tracking_is_initialized - a flag indicating
  * bgworker bound dbids at startup/recovery.
  *
- * tracking_error - sign of any internal error. If set,
- * blocks the work of track_getting procedure until cluster restart.
- *
  * bloom_set - set of db_track_count Bloom filters.
  */
 typedef struct
 {
 	pg_atomic_flag tracking_is_initialized;
-	pg_atomic_flag tracking_error;
 	bloom_set_t bloom_set;
 }	tf_shared_state_t;
 
