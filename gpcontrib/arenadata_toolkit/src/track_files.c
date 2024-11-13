@@ -141,6 +141,7 @@ xact_end_version_callback(XactEvent event, void *arg)
 	local_xid = InvalidTransactionId;
 	callbackRegistered = false;
 	controlVersionUsed = false;
+	isExecutorExplainMode = false;
 }
 
 static void
@@ -1347,8 +1348,6 @@ explain_detector_ProcessUtility(Node *parsetree,
 								DestReceiver *dest,
 								char *completionTag)
 {
-	isExecutorExplainMode = false;
-
 	if (IsA(parsetree, ExplainStmt))
 	{
 		ExplainStmt *stmt = (ExplainStmt *) parsetree;
@@ -1359,6 +1358,8 @@ explain_detector_ProcessUtility(Node *parsetree,
 
 	if (next_ProcessUtility_hook)
 		next_ProcessUtility_hook(parsetree, queryString, context, params, dest, completionTag);
+
+	isExecutorExplainMode = false;
 }
 
 void
