@@ -68,7 +68,7 @@ extern void FTSReplicationStatusShmemInit(void);
 extern void FTSReplicationStatusCreateIfNotExist(const char *app_name);
 extern void FTSReplicationStatusDrop(const char* app_name);
 
-extern FTSReplicationStatus *RetrieveFTSReplicationStatus(const char *app_name, bool skip_warn);
+extern FTSReplicationStatus *RetrieveFTSReplicationStatus(const char *app_name, bool skip_err);
 extern void FTSReplicationStatusUpdateForWalState(const char *app_name, WalSndState state);
 extern void FTSReplicationStatusMarkDisconnectForReplication(const char *app_name);
 extern pg_time_t FTSGetReplicationDisconnectTime(const char *app_name);
