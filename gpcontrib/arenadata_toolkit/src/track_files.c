@@ -354,6 +354,10 @@ tracking_get_track(PG_FUNCTION_ARGS)
 
 	tf_check_shmem_error();
 
+	if (version == InvalidVersion)
+		ereport(ERROR,
+				(errmsg("Can't perform tracking for database %u properly due to internal error", MyDatabaseId)));
+
 	if (SRF_IS_FIRSTCALL())
 	{
 		MemoryContext oldcontext;
