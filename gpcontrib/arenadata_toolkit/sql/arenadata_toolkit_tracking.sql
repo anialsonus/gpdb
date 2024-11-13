@@ -29,7 +29,21 @@ SELECT is_triggered FROM arenadata_toolkit.is_initial_snapshot_triggered;
 -- 3. If user hasn't registered any schema, the default schemas are used.
 -- See arenadata_toolkit_guc.c. At commit the bloom filter is cleared. The next
 -- track acquisition will return nothing if database is not modified in between. 
-SELECT count(*) FROM arenadata_toolkit.tables_track;
+-- Test track acquisition returns the same count of tuples as pg_class when
+-- initial snapshot is triggered.
+WITH segment_counts AS (
+    SELECT tt.segid, COUNT(*) as cnt 
+    FROM arenadata_toolkit.tables_track tt 
+    GROUP BY tt.segid
+),
+pg_class_count AS (
+    SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ','))
+    AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ','))
+    AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ','))
+)
+SELECT bool_and(sc.cnt = pc.cnt)
+FROM segment_counts sc, pg_class_count pc;
 
 -- 4. Create table in specific schema and register that schema.
 CREATE TABLE arenadata_toolkit.tracking_t1 (i INT)

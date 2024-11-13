@@ -17,14 +17,11 @@ CREATE
 (1 row)
 1: BEGIN;
 BEGIN
-1: SELECT tt.segid, count(*) FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid;
- segid | count 
--------+-------
- 1     | 264   
- 0     | 264   
- 2     | 264   
- -1    | 264   
-(4 rows)
+1: WITH segment_counts AS ( SELECT tt.segid, COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+ bool_and 
+----------
+ t        
+(1 row)
 
 2: SELECT tt.segid, count(*) FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid;
 ERROR:  Track for database 24798 is being acquired in other transaction
@@ -32,20 +29,20 @@ ERROR:  Track for database 24798 is being acquired in other transaction
 1: ROLLBACK;
 ROLLBACK
 
-2: SELECT tt.segid, count(*) FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid;
- segid | count 
--------+-------
- 1     | 264   
- 0     | 264   
- 2     | 264   
- -1    | 264   
-(4 rows)
+2: WITH segment_counts AS ( SELECT tt.segid, COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+ bool_and 
+----------
+ t        
+(1 row)
 
 1: SELECT arenadata_toolkit.tracking_unregister_db();
  tracking_unregister_db 
 ------------------------
  t                      
 (1 row)
+1: DROP EXTENSION arenadata_toolkit;
+DROP
+
 1q: ... <quitting>
 2q: ... <quitting>
 
