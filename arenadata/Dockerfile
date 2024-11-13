@@ -4,13 +4,6 @@ FROM rockylinux:8.8 as base
 ARG CC=gcc
 ARG CXX=g++
 ARG SKIP_UNITTESTS=false
-ARG USE_CLANG_ANALYZER=false
-
-RUN \
-    if [ "$USE_CLANG_ANALYZER" = true ]; then \
-        export CFLAGS="-fsyntax-only --analyze"; \
-        export CXXFLAGS="-fsyntax-only --analyze"; \
-    fi
 
 # Install some basic utilities and build tools
 RUN dnf -y install 'dnf-command(config-manager)' && dnf config-manager --set-enabled devel && dnf makecache && dnf update -y ca-certificates && \
@@ -60,8 +53,6 @@ RUN mkdir /home/gpadmin/bin_gpdb
 ENV CC=$CC
 ENV CXX=$CXX
 ENV SKIP_UNITTESTS=$SKIP_UNITTESTS
-ENV USE_CLANG_ANALYZER=$USE_CLANG_ANALYZER
-
 ENV TARGET_OS_VERSION=8
 ENV TARGET_OS=rocky8
 ENV OUTPUT_ARTIFACT_DIR=bin_gpdb
