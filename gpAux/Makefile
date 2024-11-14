@@ -96,7 +96,7 @@ SERVER_PLATFORMS=rhel7_x86_64 rhel6_x86_64 rhel8_x86_64 rocky8_x86_64 ol8_x86_64
 # Compiler options
 #---------------------------------------------------------------------
 
-ifeq ($(CC), "gcc")
+ifeq ($(GCC), yes)
 GCCFLAGS="-fargument-noalias-global"
 endif
 OPTFLAGS="$(strip $(BLD_CFLAGS) -O3 $(GCCFLAGS) -fno-omit-frame-pointer -g)"
