@@ -96,8 +96,11 @@ SERVER_PLATFORMS=rhel7_x86_64 rhel6_x86_64 rhel8_x86_64 rocky8_x86_64 ol8_x86_64
 # Compiler options
 #---------------------------------------------------------------------
 
-OPTFLAGS="$(strip $(BLD_CFLAGS) -O3 -fargument-noalias-global -fno-omit-frame-pointer -g)"
-PROFFLAGS="$(strip $(BLD_CFLAGS) -O3 -fargument-noalias-global -fno-omit-frame-pointer -g)"
+ifeq ($(GCC), yes)
+GCCFLAGS="-fargument-noalias-global"
+endif
+OPTFLAGS="$(strip $(BLD_CFLAGS) -O3 $(GCCFLAGS) -fno-omit-frame-pointer -g)"
+PROFFLAGS="$(strip $(BLD_CFLAGS) -O3 $(GCCFLAGS) -fno-omit-frame-pointer -g)"
 
 ifeq (on, ${GPDBGOPT})
 CFLAGS_OPT=-O1 -fno-omit-frame-pointer

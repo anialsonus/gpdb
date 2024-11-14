@@ -24,9 +24,8 @@ NAME = llvmjit
 
 # LLVM 14 produces deprecation warnings.  We'll need to make some changes
 # before the relevant functions are removed, but for now silence the warnings.
-ifeq ($(GCC), yes)
 LLVM_CFLAGS += -Wno-deprecated-declarations
-endif
+LLVM_CXXFLAGS += -Wno-deprecated-declarations
 
 # All files in this directory use LLVM.
 CFLAGS += $(LLVM_CFLAGS)
