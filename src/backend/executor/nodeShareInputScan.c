@@ -191,7 +191,7 @@ static void shareinput_release_callback(ResourceReleasePhase phase,
 
 static void shareinput_writer_notifyready(shareinput_Xslice_reference *ref);
 static void shareinput_reader_waitready(shareinput_Xslice_reference *ref);
-static void shareinput_reader_notifydone(shareinput_Xslice_reference *ref, int nconsumers);
+static void _shareinput_reader_notifydone(shareinput_Xslice_reference *ref, int nconsumers);
 static void shareinput_writer_waitdone(shareinput_Xslice_reference *ref, int nconsumers);
 
 static void ExecShareInputScanExplainEnd(PlanState *planstate, struct StringInfoData *buf);
@@ -312,6 +312,7 @@ init_tuplestore_state(ShareInputScanState *node)
 
 			Assert(sisc->cross_slice);
 
+			estate->sharedScanConsumers = lappend(estate->sharedScanConsumers, node);
 			shareinput_reader_waitready(node->ref);
 
 			shareinput_create_bufname_prefix(rwfile_prefix, sizeof(rwfile_prefix), sisc->share_id);
@@ -568,14 +569,6 @@ ExecEndShareInputScan(ShareInputScanState *node)
 					init_tuplestore_state(node);
 				shareinput_writer_waitdone(node->ref, sisc->nconsumers);
 			}
-			else
-			{
-				if (!local_state->closed)
-				{
-					shareinput_reader_notifydone(node->ref, sisc->nconsumers);
-					local_state->closed = true;
-				}
-			}
 		}
 		release_shareinput_reference(node->ref, false);
 		node->ref = NULL;
@@ -660,12 +653,11 @@ ExecSquelchShareInputScan(ShareInputScanState *node)
 		{
 			/* We are a consumer. Let the producer know that we're done. */
 			Assert(!local_state->closed);
-
 			local_state->ndone++;
 
 			if (local_state->ndone == local_state->nsharers)
 			{
-				shareinput_reader_notifydone(node->ref, sisc->nconsumers);
+				_shareinput_reader_notifydone(node->ref, sisc->nconsumers);
 				local_state->closed = true;
 			}
 			release_shareinput_reference(node->ref, true);
@@ -998,7 +990,7 @@ shareinput_writer_notifyready(shareinput_Xslice_reference *ref)
  *  This is a non-blocking operation.
  */
 static void
-shareinput_reader_notifydone(shareinput_Xslice_reference *ref, int nconsumers)
+_shareinput_reader_notifydone(shareinput_Xslice_reference *ref, int nconsumers)
 {
 	shareinput_Xslice_state *state = ref->xslice_state;
 	int ndone = pg_atomic_add_fetch_u32(&state->ndone, 1);
@@ -1009,6 +1001,23 @@ shareinput_reader_notifydone(shareinput_Xslice_reference *ref, int nconsumers)
 
 	elog((Debug_shareinput_xslice ? LOG : DEBUG1), "SISC READER (shareid=%d, slice=%d): wrote notify_done",
 		 ref->share_id, currentSliceId);
+}
+
+void
+shareinput_reader_notifydone(ShareInputScanState *state)
+{
+	ShareInputScan *sisc = (ShareInputScan *) state->ss.ps.plan;
+	shareinput_local_state *local_state = state->local_state;
+
+	if (state->ref == NULL)
+		return;
+
+	local_state->ndone++;
+	if (local_state->ndone != local_state->nsharers)
+		return;
+
+	local_state->closed = true;
+	_shareinput_reader_notifydone(state->ref, sisc->nconsumers);
 }
 
 /*
