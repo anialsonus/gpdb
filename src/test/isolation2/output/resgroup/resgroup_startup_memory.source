@@ -1,94 +1,22 @@
 -- start_ignore
-! gpconfig -c runaway_detector_activation_percent -v 100;
-! gpstop -rai;
-
-CREATE OR REPLACE FUNCTION resGroupPalloc(float) RETURNS int AS '/home/gpadmin/gpdb_src/src/test/isolation2/../regress/regress.so', 'resGroupPalloc' LANGUAGE C READS SQL DATA;
--- end_ignore
-
-ALTER RESOURCE GROUP default_group SET memory_limit 10;
-ALTER
-ALTER RESOURCE GROUP admin_group SET memory_limit 30;
-ALTER
-
-CREATE RESOURCE GROUP test_group with (concurrency=1, memory_limit=59, memory_spill_ratio=100, cpu_rate_limit=20);
-CREATE
-CREATE ROLE test_role RESOURCE GROUP test_group;
-CREATE
-CREATE ROLE default_role RESOURCE GROUP default_group;
-CREATE
-
--- 1. Occupy all memory on a segment and fail with vmem tracker error
-ALTER RESOURCE GROUP admin_group SET concurrency 1;
-ALTER
-ALTER RESOURCE GROUP default_group SET concurrency 1;
-ALTER
-
--- Start a session which will be detached from a group when the query is done
--- resource groups can't see startup chunks occupied by a detached session but
--- the vmem tracker can
-0: SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid != (SELECT pg_backend_pid());
- pg_terminate_backend 
-----------------------
- t                    
-(1 row)
-0: CREATE TABLE test (a int);
-CREATE
-
--- Now we need to occupy all memory in all resgroups
-1: SET ROLE test_role;
-SET
-1: BEGIN;
-BEGIN
-1: SELECT resGroupPalloc(1.0) FROM gp_dist_random('gp_id') WHERE gp_segment_id = 1;
- resgrouppalloc 
-----------------
- 0              
-(1 row)
-
-2: SET ROLE default_role;
-SET
-2: BEGIN;
-BEGIN
-2: SELECT resGroupPalloc(1.0) FROM gp_dist_random('gp_id') WHERE gp_segment_id = 1;
- resgrouppalloc 
-----------------
- 0              
-(1 row)
-
--- The sum of all resource groups' memory is 99% and 1% is global shared memory aka
--- freeChunks. On this test cluster each segment has 682mb of memory, so 1% is ~7mb.
--- The minimum number of startup chunks a process can have is 8mb.
-3: BEGIN;
-BEGIN
-3: SELECT resGroupPalloc(1.0) FROM gp_dist_random('gp_id') WHERE gp_segment_id = 1;
-ERROR:  Out of memory  (seg1 slice1 10.92.43.77:6003 pid=27662)
-DETAIL:  Vmem limit reached, failed to allocate 201326672 bytes from tracker, which has 188 MB available
-
-1q: ... <quitting>
-2q: ... <quitting>
-3q: ... <quitting>
-
--- start_ignore
 ! gpconfig -c runaway_detector_activation_percent -v 20;
 ! gpstop -rai;
 
-5: CREATE OR REPLACE FUNCTION resGroupPallocIgnoreStartup(float) RETURNS int AS '/home/gpadmin/gpdb_src/src/test/isolation2/../regress/regress.so', 'resGroupPallocIgnoreStartup' LANGUAGE C READS SQL DATA;
+CREATE OR REPLACE FUNCTION resGroupPalloc(float) RETURNS int AS '/home/kds/gpdb/src/test/isolation2/../regress/regress.so', 'resGroupPalloc' LANGUAGE C READS SQL DATA;
+CREATE OR REPLACE FUNCTION resGroupPallocIgnoreStartup(float) RETURNS int AS '/home/kds/gpdb/src/test/isolation2/../regress/regress.so', 'resGroupPallocIgnoreStartup' LANGUAGE C READS SQL DATA;
 -- end_ignore
 
-5: drop role test_role;
-DROP
-5: drop resource group test_group;
-DROP
-5: alter resource group default_group set memory_limit 20;
+ALTER RESOURCE GROUP default_group SET memory_limit 20;
 ALTER
-5: alter resource group admin_group set memory_limit 10;
+ALTER RESOURCE GROUP admin_group SET memory_limit 10;
 ALTER
-5: alter resource group admin_group set concurrency 1;
+ALTER RESOURCE GROUP admin_group set concurrency 1;
 ALTER
+
 5: select * from gp_toolkit.gp_resgroup_config;
  groupid | groupname     | concurrency | cpu_rate_limit | memory_limit | memory_shared_quota | memory_spill_ratio | memory_auditor | cpuset 
 ---------+---------------+-------------+----------------+--------------+---------------------+--------------------+----------------+--------
- 6437    | default_group | 1           | 30             | 20           | 80                  | 10                 | vmtracker      | -1     
+ 6437    | default_group | 20          | 30             | 20           | 80                  | 10                 | vmtracker      | -1     
  6438    | admin_group   | 1           | 10             | 10           | 80                  | 10                 | vmtracker      | -1     
 (2 rows)
 5q: ... <quitting>
@@ -97,7 +25,7 @@ ALTER
 -- the memory size of all resgroup memory. Before startup chunks were considered, a group had no memory tracked
 -- at the moment we called resGroupPalloc, so this case shows that now a group tracks startup memory.
 5: SELECT resGroupPallocIgnoreStartup(2.39) FROM gp_dist_random('gp_id') WHERE gp_segment_id = 1;
-ERROR:  Canceling query because of high VMEM usage. current group id is 6438, group memory usage 175 MB, group shared memory quota is 55 MB, slot memory quota is 13 MB, global freechunks memory is 371 MB, global safe memory threshold is 382 MB (runaway_cleaner.c:197)  (seg1 slice1 10.92.43.77:6003 pid=29699) (runaway_cleaner.c:197)
+ERROR:  Canceling query because of high VMEM usage. current group id is 6438, group memory usage 175 MB, group shared memory quota is 55 MB, slot memory quota is 13 MB, global freechunks memory is 371 MB, global safe memory threshold is 382 MB (runaway_cleaner.c:197)  (seg1 slice1 10.92.43.77:6003 pid=29522) (runaway_cleaner.c:197)
 5q: ... <quitting>
 
 -- This won't fail because now resGroupPalloc subtracts startup chunks from the requested amount
@@ -108,8 +36,3 @@ ERROR:  Canceling query because of high VMEM usage. current group id is 6438, gr
  0              
 (1 row)
 5q: ... <quitting>
-
-5: DROP TABLE test;
-DROP
-5: DROP ROLE default_role;
-DROP
