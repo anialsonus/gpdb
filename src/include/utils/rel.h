@@ -240,6 +240,7 @@ typedef struct StdRdOptions
 	int			check_option_offset;	/* for views */
 	bool		user_catalog_table;		/* use as an additional catalog
 										 * relation */
+	bool		inherit_table_options; 	/* inherit table options */
 } StdRdOptions;
 
 #define HEAP_MIN_FILLFACTOR			10

@@ -71,6 +71,14 @@ static relopt_bool boolRelOpts_gp[] =
 		},
 		ANALYZE_DEFAULT_HLL
 	},
+	{
+		{
+			SOPT_INHERIT,
+			"Inherit table options",
+			RELOPT_KIND_HEAP
+		},
+		INHERIT_DEFAULT
+	},
 	/* list terminator */
 	{{NULL}}
 };
@@ -613,7 +621,8 @@ transformAOStdRdOptions(StdRdOptions *opts, Datum withOpts)
 				foundComplevel = false,
 				foundChecksum = false,
 				foundOrientation = false,
-				foundAnalyzeHLL = false;
+				foundAnalyzeHLL = false,
+				foundInherit = false;
 
 	/*
 	 * withOpts must be parsed to see if an option was spcified in WITH()
@@ -744,6 +753,17 @@ transformAOStdRdOptions(StdRdOptions *opts, Datum withOpts)
 				astate = accumArrayResult(astate, d, false, TEXTOID,
 										  CurrentMemoryContext);
 			}
+			soptLen = strlen(SOPT_INHERIT);
+			if (withLen > soptLen &&
+				pg_strncasecmp(strval, SOPT_INHERIT, soptLen) == 0)
+			{
+				foundInherit = true;
+				d = CStringGetTextDatum(psprintf("%s=%s",
+												 SOPT_INHERIT,
+												 (opts->inherit_table_options ? "true" : "false")));
+				astate = accumArrayResult(astate, d, false, TEXTOID,
+										  CurrentMemoryContext);
+			}
 		}
 	}
 
@@ -821,6 +841,14 @@ transformAOStdRdOptions(StdRdOptions *opts, Datum withOpts)
 		astate = accumArrayResult(astate, d, false, TEXTOID,
 								  CurrentMemoryContext);
 	}
+	if ((opts->inherit_table_options != INHERIT_DEFAULT) && !foundInherit)
+	{
+		d = CStringGetTextDatum(psprintf("%s=%s",
+										 SOPT_INHERIT,
+										 (opts->inherit_table_options ? "true" : "false")));
+		astate = accumArrayResult(astate, d, false, TEXTOID,
+								  CurrentMemoryContext);
+	}
 	return astate ?
 		makeArrayResult(astate, CurrentMemoryContext) :
 		PointerGetDatum(NULL);
@@ -840,6 +868,7 @@ validate_and_adjust_options(StdRdOptions *result,
 	relopt_value *checksum_opt;
 	relopt_value *orientation_opt;
 	relopt_value *analyze_hll_non_part_table_opt;
+	relopt_value *inherit_table_options_opt;
 
 	/* fillfactor */
 	fillfactor_opt = get_option_set(options, num_options, SOPT_FILLFACTOR);
@@ -1106,6 +1135,16 @@ validate_and_adjust_options(StdRdOptions *result,
 					 errmsg("usage of parameter \"analyze_hll_non_part_table\" in a non relation object is not supported")));
 		result->analyze_hll_non_part_table = analyze_hll_non_part_table_opt->values.bool_val;
 	}
+	/* inherit_table_options */
+	inherit_table_options_opt = get_option_set(options, num_options, SOPT_INHERIT);
+	if (inherit_table_options_opt != NULL)
+	{
+		if (!KIND_IS_RELATION(kind))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("usage of parameter \"inherit\" in a non relation object is not supported")));
+		result->inherit_table_options = inherit_table_options_opt->values.bool_val;
+	}
 
 	if (result->appendonly && result->compresstype[0])
 		if (result->compresslevel == AO_DEFAULT_COMPRESSLEVEL)
@@ -1116,7 +1155,7 @@ void
 validate_and_refill_options(StdRdOptions *result, relopt_value *options,
 							int numrelopts, relopt_kind kind, bool validate)
 {
-	if (validate &&
+	if (validate && !get_option_set(options, numrelopts, SOPT_INHERIT) &&
 		ao_storage_opts_changed &&
 		KIND_IS_RELATION(kind))
 	{
