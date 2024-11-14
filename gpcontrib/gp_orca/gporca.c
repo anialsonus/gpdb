@@ -51,7 +51,6 @@ static PlannedStmt *
 gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 {
 	PlannedStmt	   *result = NULL;
-	static bool first_call = true;
 
 	/*
 	 * Use ORCA only if it is enabled and we are in a coordinator QD process.
@@ -75,11 +74,8 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 		instr_time		starttime;
 		instr_time		endtime;
 
-		if (first_call)
-		{
+		if (NULL == OptimizerMemoryContext)
 			gp_orca_init();
-			first_call = false;
-		}
 
 		if (gp_log_optimization_time)
 			INSTR_TIME_SET_CURRENT(starttime);
