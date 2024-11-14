@@ -90,7 +90,7 @@ SELECT * FROM tracking_is_segment_initialized_master() UNION ALL SELECT * FROM t
  2        | t              
 (4 rows)
 
--- Track acquisition should retrurn full snapshot from promoted mirror since
+-- Track acquisition should return full snapshot from promoted mirror since
 -- initial snapshot is activated on recovery by default.
 WITH segment_counts AS ( SELECT COUNT(*) AS cnt FROM arenadata_toolkit.tables_track tt WHERE tt.segid = 1 GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
  bool_and 

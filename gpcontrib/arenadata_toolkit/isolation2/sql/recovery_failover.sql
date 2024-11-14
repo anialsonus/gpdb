@@ -80,7 +80,7 @@ SELECT * FROM tracking_is_segment_initialized_master()
 UNION ALL
 SELECT * FROM tracking_is_segment_initialized_segments();
 
--- Track acquisition should retrurn full snapshot from promoted mirror since
+-- Track acquisition should return full snapshot from promoted mirror since
 -- initial snapshot is activated on recovery by default.
 WITH segment_counts AS (
     SELECT COUNT(*) AS cnt 
