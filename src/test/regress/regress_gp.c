@@ -658,7 +658,7 @@ resGroupPallocImpl(float ratio, bool considerStartup) {
 }
 
 /*
- * This function is a copy of resGroupPalloc that existed before the patch.
+ * This function is a copy of resGroupPalloc that existed before startup chunks were considered
  * It's needed for the tests, but we can't use the old name because we need
  * to maintain compatibility with the old tests which don't expect resGroupPalloc
  * to allocate extra memory which is startupChunks

@@ -61,7 +61,7 @@ LANGUAGE C READS SQL DATA;
 5q:
 
 -- This query will be killed by redzone because resGroupPallocIgnoreStartup just allocates
--- the memory size of all resgroup memory. Before the patch, a group had no memory tracked
+-- the memory size of all resgroup memory. Before startup chunks were considered, a group had no memory tracked
 -- at the moment we called resGroupPalloc, so this case shows that now a group tracks startup memory.
 5: SELECT resGroupPallocIgnoreStartup(2.39) FROM gp_dist_random('gp_id') WHERE gp_segment_id = 1;
 5q:
