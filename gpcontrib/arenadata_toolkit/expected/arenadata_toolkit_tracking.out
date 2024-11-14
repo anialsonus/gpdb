@@ -42,7 +42,7 @@ SELECT is_triggered FROM arenadata_toolkit.is_initial_snapshot_triggered;
 -- Test track acquisition returns the same count of tuples as pg_class when
 -- initial snapshot is triggered.
 WITH segment_counts AS (
-    SELECT tt.segid, COUNT(*) as cnt 
+    SELECT tt.segid, COUNT(*) AS cnt 
     FROM arenadata_toolkit.tables_track tt 
     GROUP BY tt.segid
 ),

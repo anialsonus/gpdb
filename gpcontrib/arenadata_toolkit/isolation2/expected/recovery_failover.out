@@ -38,7 +38,7 @@ SELECT arenadata_toolkit.tracking_trigger_initial_snapshot();
 
 -- Test track acquisition returns the same count of tuples as pg_class has with
 -- default filter options.
-WITH segment_counts AS ( SELECT tt.segid, COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+WITH segment_counts AS ( SELECT tt.segid, COUNT(*) AS cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
  bool_and 
 ----------
  t        
@@ -92,7 +92,7 @@ SELECT * FROM tracking_is_segment_initialized_master() UNION ALL SELECT * FROM t
 
 -- Track acquisition should retrurn full snapshot from promoted mirror since
 -- initial snapshot is activated on recovery by default.
-WITH segment_counts AS ( SELECT COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt WHERE tt.segid = 1 GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+WITH segment_counts AS ( SELECT COUNT(*) AS cnt FROM arenadata_toolkit.tables_track tt WHERE tt.segid = 1 GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
  bool_and 
 ----------
  t        
@@ -128,7 +128,7 @@ SELECT count(*) FROM gp_segment_configuration WHERE status = 'd';
 
 -- Track should be returned only from recovered segment since
 -- initial snapshot is activated on recovery by default.
-WITH segment_counts AS ( SELECT COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+WITH segment_counts AS ( SELECT COUNT(*) AS cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
  bool_and 
 ----------
  t        

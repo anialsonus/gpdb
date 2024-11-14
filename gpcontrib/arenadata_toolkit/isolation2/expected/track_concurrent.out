@@ -17,7 +17,7 @@ CREATE
 (1 row)
 1: BEGIN;
 BEGIN
-1: WITH segment_counts AS ( SELECT tt.segid, COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+1: WITH segment_counts AS ( SELECT tt.segid, COUNT(*) AS cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
  bool_and 
 ----------
  t        
@@ -29,7 +29,7 @@ ERROR:  Track for database 24798 is being acquired in other transaction
 1: ROLLBACK;
 ROLLBACK
 
-2: WITH segment_counts AS ( SELECT tt.segid, COUNT(*) as cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
+2: WITH segment_counts AS ( SELECT tt.segid, COUNT(*) AS cnt FROM arenadata_toolkit.tables_track tt GROUP BY tt.segid ), pg_class_count AS ( SELECT COUNT(*) AS cnt FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE nspname = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_schemas'), ',')) AND c.relstorage = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relstorages'), ',')) AND c.relkind = ANY (string_to_array(current_setting('arenadata_toolkit.tracking_relkinds'), ',')) ) SELECT bool_and(sc.cnt = pc.cnt) FROM segment_counts sc, pg_class_count pc;
  bool_and 
 ----------
  t        

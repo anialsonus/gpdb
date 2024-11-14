@@ -8,7 +8,7 @@
 1: SELECT arenadata_toolkit.tracking_trigger_initial_snapshot();
 1: BEGIN;
 1: WITH segment_counts AS (
-    SELECT tt.segid, COUNT(*) as cnt 
+    SELECT tt.segid, COUNT(*) AS cnt 
     FROM arenadata_toolkit.tables_track tt 
     GROUP BY tt.segid
 ),
@@ -26,7 +26,7 @@ FROM segment_counts sc, pg_class_count pc;
 1: ROLLBACK;
 
 2: WITH segment_counts AS (
-    SELECT tt.segid, COUNT(*) as cnt 
+    SELECT tt.segid, COUNT(*) AS cnt 
     FROM arenadata_toolkit.tables_track tt 
     GROUP BY tt.segid
 ),

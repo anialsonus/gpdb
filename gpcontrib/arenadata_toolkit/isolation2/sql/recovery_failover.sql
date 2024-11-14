@@ -19,7 +19,7 @@ SELECT arenadata_toolkit.tracking_trigger_initial_snapshot();
 -- Test track acquisition returns the same count of tuples as pg_class has with
 -- default filter options.
 WITH segment_counts AS (
-    SELECT tt.segid, COUNT(*) as cnt 
+    SELECT tt.segid, COUNT(*) AS cnt 
     FROM arenadata_toolkit.tables_track tt 
     GROUP BY tt.segid
 ),
@@ -83,7 +83,7 @@ SELECT * FROM tracking_is_segment_initialized_segments();
 -- Track acquisition should retrurn full snapshot from promoted mirror since
 -- initial snapshot is activated on recovery by default.
 WITH segment_counts AS (
-    SELECT COUNT(*) as cnt 
+    SELECT COUNT(*) AS cnt 
     FROM arenadata_toolkit.tables_track tt WHERE tt.segid = 1
     GROUP BY tt.segid
 ),
@@ -113,7 +113,7 @@ SELECT count(*) FROM gp_segment_configuration WHERE status = 'd';
 -- Track should be returned only from recovered segment since
 -- initial snapshot is activated on recovery by default.
 WITH segment_counts AS (
-    SELECT COUNT(*) as cnt 
+    SELECT COUNT(*) AS cnt 
     FROM arenadata_toolkit.tables_track tt
     GROUP BY tt.segid
 ),
