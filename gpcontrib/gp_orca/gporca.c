@@ -5,6 +5,7 @@
 #include "miscadmin.h"
 #include "optimizer/orca.h"
 #include "optimizer/planner.h"
+#include "storage/ipc.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
@@ -21,10 +22,35 @@ void		_PG_fini(void);
 
 static planner_hook_type prev_planner = NULL;
 
+static void
+gp_orca_shutdown(int code, Datum arg)
+{
+	TerminateGPOPT();
+
+	if (OptimizerMemoryContext != NULL)
+		MemoryContextDelete(OptimizerMemoryContext);
+}
+
+static void
+gp_orca_init()
+{
+	/* Initialize GPOPT */
+	OptimizerMemoryContext = AllocSetContextCreate(TopMemoryContext,
+												"GPORCA Top-level Memory Context",
+												ALLOCSET_DEFAULT_MINSIZE,
+												ALLOCSET_DEFAULT_INITSIZE,
+												ALLOCSET_DEFAULT_MAXSIZE);
+
+	InitGPOPT();
+
+	before_shmem_exit(gp_orca_shutdown, 0);
+}
+
 static PlannedStmt *
 gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 {
 	PlannedStmt	   *result = NULL;
+	static bool first_call = true;
 
 	/*
 	 * Use ORCA only if it is enabled and we are in a coordinator QD process.
@@ -47,6 +73,12 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 	{
 		instr_time		starttime;
 		instr_time		endtime;
+
+		if (first_call)
+		{
+			gp_orca_init();
+			first_call = false;
+		}
 
 		if (gp_log_optimization_time)
 			INSTR_TIME_SET_CURRENT(starttime);
@@ -81,6 +113,8 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 	return result;
 }
 
+
+
 void
 _PG_init(void)
 {
@@ -89,36 +123,16 @@ _PG_init(void)
 				(errcode(ERRCODE_INTERNAL_ERROR),
 				 errmsg("This module can only be loaded via shared_preload_libraries")));
 
-	if (!IS_QUERY_DISPATCHER())
+	if (!(IS_QUERY_DISPATCHER() && (GP_ROLE_DISPATCH == Gp_role)))
 		return;
 
-	if (Gp_role == GP_ROLE_DISPATCH)
-	{
-		/* Initialize GPOPT */
-		OptimizerMemoryContext = AllocSetContextCreate(TopMemoryContext,
-													"GPORCA Top-level Memory Context",
-													ALLOCSET_DEFAULT_MINSIZE,
-													ALLOCSET_DEFAULT_INITSIZE,
-													ALLOCSET_DEFAULT_MAXSIZE);
-
-		InitGPOPT();
-
-		prev_planner = planner_hook;
-		planner_hook = gp_orca_planner;
-	}
+	prev_planner = planner_hook;
+	planner_hook = gp_orca_planner;
 }
 
 void
 _PG_fini(void)
 {
-	if (Gp_role == GP_ROLE_DISPATCH)
-	{
-		planner_hook = prev_planner;
-
-		TerminateGPOPT();
-
-		if (OptimizerMemoryContext != NULL)
-			MemoryContextDelete(OptimizerMemoryContext);
-	}
+	planner_hook = prev_planner;
 }
 
