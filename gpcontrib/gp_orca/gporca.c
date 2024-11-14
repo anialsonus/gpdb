@@ -8,6 +8,7 @@
 #include "storage/ipc.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
+#include "utils/vmem_tracker.h"
 #include "utils/memutils.h"
 
 PG_MODULE_MAGIC;
@@ -125,6 +126,17 @@ _PG_init(void)
 
 	if (!(IS_QUERY_DISPATCHER() && (GP_ROLE_DISPATCH == Gp_role)))
 		return;
+
+	/* When compile with ORCA it will commit 6MB more */
+	Size orca_mem = 6L << BITS_IN_MB;
+	/*
+	 * When optimizer_use_gpdb_allocators is on, at least 2MB of above will be
+	 * tracked by vmem tracker later, so do not recount them.
+	 */
+	if (optimizer_use_gpdb_allocators)
+		orca_mem -= (2L << BITS_IN_MB);
+
+	GPMemoryProtect_RequestAddinStartupMemory(orca_mem);
 
 	prev_planner = planner_hook;
 	planner_hook = gp_orca_planner;
