@@ -296,7 +296,7 @@ static split_rollup_data *make_new_rollups_for_hash_grouping_set(PlannerInfo *ro
 																 Path *path,
 																 grouping_sets_data *gd);
 
-static void compute_jit_flags(PlannedStmt* pstmt);
+void compute_jit_flags(PlannedStmt* pstmt);
 
 /*****************************************************************************
  *
@@ -354,61 +354,6 @@ standard_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 	instr_time		starttime;
 	instr_time		endtime;
 
-	/*
-	 * Use ORCA only if it is enabled and we are in a coordinator QD process.
-	 *
-	 * ORCA excels in complex queries, most of which will access distributed
-	 * tables. We can't run such queries from the segments slices anyway because
-	 * they require dispatching a query within another - which is not allowed in
-	 * GPDB (see querytree_safe_for_qe()). Note that this restriction also
-	 * applies to non-QD coordinator slices.  Furthermore, ORCA doesn't currently
-	 * support pl/<lang> statements (relevant when they are planned on the segments).
-	 * For these reasons, restrict to using ORCA on the coordinator QD processes only.
-	 *
-	 * PARALLEL RETRIEVE CURSOR is not supported by ORCA yet.
-	 */
-	if (optimizer &&
-		GP_ROLE_DISPATCH == Gp_role &&
-		IS_QUERY_DISPATCHER() &&
-		(cursorOptions & CURSOR_OPT_SKIP_FOREIGN_PARTITIONS) == 0 &&
-		(cursorOptions & CURSOR_OPT_PARALLEL_RETRIEVE) == 0)
-	{
-		if (gp_log_optimization_time)
-			INSTR_TIME_SET_CURRENT(starttime);
-
-#ifdef USE_ORCA
-		result = optimize_query(parse, cursorOptions, boundParams);
-#else
-		/* Make sure this branch is not taken in builds using --disable-orca. */
-		Assert(false);
-		/* Keep compilers quiet in case the build used --disable-orca. */
-		result = NULL;
-#endif
-
-		/* decide jit state */
-		if (result)
-		{
-			/*
-			 * Setting Jit flags for Optimizer
-			 */
-			compute_jit_flags(result);
-		}
-
-		if (gp_log_optimization_time)
-		{
-			INSTR_TIME_SET_CURRENT(endtime);
-			INSTR_TIME_SUBTRACT(endtime, starttime);
-			elog(LOG, "Optimizer Time: %.3f ms", INSTR_TIME_GET_MILLISEC(endtime));
-		}
-
-		if (result)
-			return result;
-	}
-
-	/*
-	 * Fall back to using the PostgreSQL planner in case Orca didn't run (in
-	 * utility mode or on a segment) or if it didn't produce a plan.
-	 */
 	if (gp_log_optimization_time)
 		INSTR_TIME_SET_CURRENT(starttime);
 
@@ -8762,7 +8707,7 @@ make_new_rollups_for_hash_grouping_set(PlannerInfo        *root,
  * for Optimizer and used here for setting the JIT flags.
  *
  */
-static void compute_jit_flags(PlannedStmt* pstmt)
+void compute_jit_flags(PlannedStmt* pstmt)
 {
 	Plan* top_plan = pstmt->planTree;
 	pstmt->jitFlags = PGJIT_NONE;
