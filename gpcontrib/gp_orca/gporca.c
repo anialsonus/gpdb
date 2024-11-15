@@ -26,6 +26,9 @@ static planner_hook_type prev_planner = NULL;
 static void
 gp_orca_shutdown(int code, Datum arg)
 {
+	(void) code;
+	(void) arg;
+
 	TerminateGPOPT();
 
 	if (NULL != OptimizerMemoryContext)
