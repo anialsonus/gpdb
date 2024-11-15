@@ -8,8 +8,8 @@
 #include "storage/ipc.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
-#include "utils/vmem_tracker.h"
 #include "utils/memutils.h"
+#include "utils/vmem_tracker.h"
 
 PG_MODULE_MAGIC;
 
@@ -18,8 +18,8 @@ extern void TerminateGPOPT();
 
 extern void compute_jit_flags(PlannedStmt *pstmt);
 
-void		_PG_init(void);
-void		_PG_fini(void);
+void _PG_init(void);
+void _PG_fini(void);
 
 static planner_hook_type prev_planner = NULL;
 
@@ -36,11 +36,10 @@ static void
 gp_orca_init()
 {
 	/* Initialize GPOPT */
-	OptimizerMemoryContext = AllocSetContextCreate(TopMemoryContext,
-										   "GPORCA Top-level Memory Context",
-												   ALLOCSET_DEFAULT_MINSIZE,
-												   ALLOCSET_DEFAULT_INITSIZE,
-												   ALLOCSET_DEFAULT_MAXSIZE);
+	OptimizerMemoryContext = AllocSetContextCreate(
+		TopMemoryContext, "GPORCA Top-level Memory Context",
+		ALLOCSET_DEFAULT_MINSIZE, ALLOCSET_DEFAULT_INITSIZE,
+		ALLOCSET_DEFAULT_MAXSIZE);
 
 	InitGPOPT();
 
@@ -66,14 +65,12 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 	 *
 	 * PARALLEL RETRIEVE CURSOR is not supported by ORCA yet.
 	 */
-	if (optimizer &&
-		GP_ROLE_DISPATCH == Gp_role &&
-		IS_QUERY_DISPATCHER() &&
+	if (optimizer && GP_ROLE_DISPATCH == Gp_role && IS_QUERY_DISPATCHER() &&
 		(cursorOptions & CURSOR_OPT_SKIP_FOREIGN_PARTITIONS) == 0 &&
 		(cursorOptions & CURSOR_OPT_PARALLEL_RETRIEVE) == 0)
 	{
-		instr_time	starttime;
-		instr_time	endtime;
+		instr_time starttime;
+		instr_time endtime;
 
 		if (NULL == OptimizerMemoryContext)
 			gp_orca_init();
@@ -96,7 +93,8 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 		{
 			INSTR_TIME_SET_CURRENT(endtime);
 			INSTR_TIME_SUBTRACT(endtime, starttime);
-			elog(LOG, "Optimizer Time: %.3f ms", INSTR_TIME_GET_MILLISEC(endtime));
+			elog(LOG, "Optimizer Time: %.3f ms",
+				 INSTR_TIME_GET_MILLISEC(endtime));
 		}
 
 		if (result)
@@ -104,7 +102,7 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 	}
 
 	if (prev_planner)
-		result = (*prev_planner) (parse, cursorOptions, boundParams);
+		result = (*prev_planner)(parse, cursorOptions, boundParams);
 	else
 		result = standard_planner(parse, cursorOptions, boundParams);
 
@@ -115,15 +113,17 @@ void
 _PG_init(void)
 {
 	if (!process_shared_preload_libraries_in_progress)
-		ereport(ERROR,
-				(errcode(ERRCODE_INTERNAL_ERROR),
-				 errmsg("This module can only be loaded via shared_preload_libraries")));
+		ereport(
+			ERROR,
+			(errcode(ERRCODE_INTERNAL_ERROR),
+			 errmsg(
+				 "This module can only be loaded via shared_preload_libraries")));
 
 	if (!(IS_QUERY_DISPATCHER() && (GP_ROLE_DISPATCH == Gp_role)))
 		return;
 
 	/* When compile with ORCA it will commit 6MB more */
-	Size		orca_mem = 6L << BITS_IN_MB;
+	Size orca_mem = 6L << BITS_IN_MB;
 
 	/*
 	 * When optimizer_use_gpdb_allocators is on, at least 2MB of above will be
