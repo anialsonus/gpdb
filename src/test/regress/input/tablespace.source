@@ -346,6 +346,8 @@ SELECT gp_inject_fault_infinite('bg_buffer_sync_default_logic', 'skip', dbid) FR
 
 CREATE TABLESPACE testtablespace LOCATION '@testtablespace@';
 
+RESET default_tablespace;
+
 -- Checking that the temp heap table doesn't leave non-zero files.
 CREATE TEMP TABLE t(a int, b int) TABLESPACE testtablespace;
 INSERT INTO t SELECT i, i FROM generate_series(1, 1000) i;
