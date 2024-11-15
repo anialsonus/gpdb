@@ -632,7 +632,7 @@ repeatPalloc(PG_FUNCTION_ARGS)
 }
 
 static bool startupConsidered = false;
-void
+static void
 resGroupPallocImpl(float ratio, bool considerStartup) {
 	int memLimit, slotQuota, sharedQuota;
 	int size;
