@@ -587,7 +587,11 @@ GetMirrorStatus(FtsResponse *response, bool *ready_for_syncrep)
 	LWLockRelease(SyncRepLock);
 
 	if (!response->IsMirrorUp)
+	{
 		response->RequestRetry = is_probe_retry_needed();
+		if (!response->RequestRetry)
+			SIMPLE_FAULT_INJECTOR("replication_mirror_down");
+	}
 }
 
 /*

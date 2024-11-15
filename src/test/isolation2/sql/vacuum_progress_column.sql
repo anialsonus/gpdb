@@ -142,13 +142,15 @@ select relid::regclass as relname, phase, heap_blks_total, heap_blks_scanned, he
 
 -- we shouldn't proceed until FTS probe has bumped the version
 2: SELECT gp_inject_fault('vacuum_rel_finished_one_relation', 'suspend', '', '', 'vacuum_progress_ao_column', 1, 1, 0, 1) FROM master();
-2: SELECT gp_inject_fault('ftsLoop_after_probe', 'skip', 1) FROM master();
+2: SELECT gp_inject_fault('replication_mirror_down', 'skip', dbid) FROM gp_segment_configuration WHERE role = 'p' and content = 1;
 -- resume walsender and let it exit so that mirror stop can be detected
 2: SELECT gp_inject_fault_infinite('wal_sender_loop', 'reset', dbid) FROM gp_segment_configuration WHERE role = 'p' and content = 1;
+-- wait for the mirror stop to be detected
+2: SELECT gp_wait_until_triggered_fault('replication_mirror_down', 1, dbid) FROM gp_segment_configuration WHERE content = 1 AND role = 'p';
+2: SELECT gp_inject_fault('replication_mirror_down', 'reset', dbid) FROM gp_segment_configuration WHERE role = 'p' and content = 1;
 -- wait for FTS probe
-2: SELECT gp_wait_until_triggered_fault('ftsLoop_after_probe', 1, 1) FROM master();
-2: SELECT gp_inject_fault('vacuum_rel_finished_one_relation', 'reset', 1) FROM master();
-2: SELECT gp_inject_fault('ftsLoop_after_probe', 'reset', 1) FROM master();
+2: SELECT gp_request_fts_probe_scan();
+2: SELECT gp_inject_fault('vacuum_rel_finished_one_relation', 'reset', dbid) FROM master();
 
 -- Ensure we enter into the target logic which stops cumulative data but
 -- initializes a new vacrelstats at the beginning of post-cleanup phase.
