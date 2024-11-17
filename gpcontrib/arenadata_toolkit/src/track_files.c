@@ -34,7 +34,6 @@
 #include "track_files.h"
 
 PG_FUNCTION_INFO_V1(tracking_register_db);
-PG_FUNCTION_INFO_V1(tracking_register_db_main);
 PG_FUNCTION_INFO_V1(tracking_unregister_db);
 PG_FUNCTION_INFO_V1(tracking_set_snapshot_on_recovery);
 PG_FUNCTION_INFO_V1(tracking_register_schema);
@@ -612,32 +611,18 @@ track_db(Oid dbid, bool reg)
 		tf_guc_unlock_tracked_once();
 
 		AlterDatabaseSet(&stmt);
-	}
 
-	tf_guc_unlock_tracked_once();
-	SetConfigOption("arenadata_toolkit.tracking_is_db_tracked", reg ? "t" : "f",
-					PGC_S_DATABASE, PGC_S_DATABASE);
+		tf_guc_unlock_tracked_once();
+		/* Will set the GUC in caller session only on coordinator */
+		SetConfigOption("arenadata_toolkit.tracking_is_db_tracked", reg ? "t" : "f",
+						PGC_S_DATABASE, PGC_S_DATABASE);
+	}
 
 	if (!reg)
 		bloom_set_unbind(dbid);
 	else if (!bloom_set_bind(dbid))
 		ereport(ERROR,
 				(errmsg("[arenadata_toolkit] exceeded maximum number of tracked databases")));
-}
-
-Datum
-tracking_register_db_main(PG_FUNCTION_ARGS)
-{
-	Oid			dbid = get_dbid(PG_GETARG_OID(1));
-	bool		reg = PG_GETARG_BOOL(0);
-
-	tf_check_shmem_error();
-
-	elog(LOG, "[arenadata_toolkit] registering database %u for tracking", dbid);
-
-	track_db(dbid, reg);
-
-	PG_RETURN_BOOL(true);
 }
 
 static bool
@@ -715,7 +700,7 @@ tracking_register_db(PG_FUNCTION_ARGS)
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		char	   *cmd =
-		psprintf("select arenadata_toolkit.tracking_register_db_main(true, %u)", dbid);
+		psprintf("select arenadata_toolkit.tracking_register_db(%u)", dbid);
 
 		CdbDispatchCommand(cmd, 0, NULL);
 
@@ -753,7 +738,7 @@ tracking_unregister_db(PG_FUNCTION_ARGS)
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		char	   *cmd =
-		psprintf("select arenadata_toolkit.tracking_register_db_main(false, %u)", dbid);
+		psprintf("select arenadata_toolkit.tracking_unregister_db(%u)", dbid);
 
 		CdbDispatchCommand(cmd, 0, NULL);
 

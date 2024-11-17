@@ -6,12 +6,6 @@ returns BOOL AS '$libdir/arenadata_toolkit',
 
 REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_register_db(dbid OID) FROM public;
 
-CREATE FUNCTION arenadata_toolkit.tracking_register_db_main(reg BOOL, dbid OID DEFAULT 0)
-returns BOOL AS '$libdir/arenadata_toolkit',
-'tracking_register_db_main' LANGUAGE C;
-
-REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_register_db_main(reg BOOL, dbid OID) FROM public;
-
 CREATE FUNCTION arenadata_toolkit.tracking_unregister_db(dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
 'tracking_unregister_db' LANGUAGE C EXECUTE ON MASTER;
@@ -52,19 +46,19 @@ CREATE FUNCTION arenadata_toolkit.tracking_trigger_initial_snapshot(dbid OID DEF
 returns BOOL AS '$libdir/arenadata_toolkit',
 'tracking_trigger_initial_snapshot' LANGUAGE C;
 
-CREATE FUNCTION arenadata_toolkit.tracking_is_initial_snapshot_triggered(dbid OID DEFAULT 0)
-returns BOOL AS '$libdir/arenadata_toolkit',
-'tracking_is_initial_snapshot_triggered' LANGUAGE C;
-
-REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_is_initial_snapshot_triggered(dbid OID) FROM public;
+GRANT EXECUTE ON FUNCTION arenadata_toolkit.tracking_trigger_initial_snapshot(dbid OID) TO public;
 
 CREATE FUNCTION arenadata_toolkit.tracking_is_initial_snapshot_triggered_master(dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
 'tracking_is_initial_snapshot_triggered' LANGUAGE C EXECUTE ON master;
 
+GRANT EXECUTE ON FUNCTION arenadata_toolkit.tracking_is_initial_snapshot_triggered_master(dbid OID) TO public;
+
 CREATE FUNCTION arenadata_toolkit.tracking_is_initial_snapshot_triggered_segments(dbid OID DEFAULT 0)
 returns BOOL AS '$libdir/arenadata_toolkit',
 'tracking_is_initial_snapshot_triggered' LANGUAGE C EXECUTE ON ALL segments;
+
+GRANT EXECUTE ON FUNCTION arenadata_toolkit.tracking_is_initial_snapshot_triggered_segments(dbid OID) TO public;
 
 CREATE FUNCTION arenadata_toolkit.tracking_is_segment_initialized()
 returns TABLE(segindex INT, is_initialized BOOL) AS '$libdir/arenadata_toolkit',
@@ -76,21 +70,22 @@ CREATE FUNCTION arenadata_toolkit.tracking_track_version()
 returns BIGINT AS '$libdir/arenadata_toolkit',
 'tracking_track_version' LANGUAGE C STABLE EXECUTE ON MASTER;
 
-REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_track_version() FROM public;
+-- Shouldn't be called explicitly
+GRANT EXECUTE ON FUNCTION arenadata_toolkit.tracking_track_version() TO public;
 
 CREATE FUNCTION arenadata_toolkit.tracking_get_track_master(version BIGINT)
 RETURNS TABLE(relid OID, relname NAME, relfilenode OID, size BIGINT, state "char", segid INT,
 relnamespace OID, relkind "char", relstorage "char") AS '$libdir/arenadata_toolkit',
 'tracking_get_track' LANGUAGE C EXECUTE ON MASTER;
 
-REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_get_track_master(version BIGINT) FROM public;
+GRANT EXECUTE ON FUNCTION arenadata_toolkit.tracking_get_track_master(version BIGINT) TO public;
 
 CREATE FUNCTION arenadata_toolkit.tracking_get_track_segments(version BIGINT)
 RETURNS TABLE(relid OID, relname NAME, relfilenode OID, size BIGINT, state "char", segid INT,
 relnamespace OID, relkind "char", relstorage "char") AS '$libdir/arenadata_toolkit',
 'tracking_get_track' LANGUAGE C EXECUTE ON ALL SEGMENTS;
 
-REVOKE ALL ON FUNCTION arenadata_toolkit.tracking_get_track_segments(version BIGINT) FROM public;
+GRANT EXECUTE ON FUNCTION arenadata_toolkit.tracking_get_track_segments(version BIGINT) TO public;
 
 CREATE VIEW arenadata_toolkit.tables_track AS
 SELECT t.*, coalesce(c.oid, i.indrelid, vm.relid, blk.relid, seg.relid) AS parent_relid
@@ -119,9 +114,12 @@ LEFT JOIN pg_catalog.pg_appendonly AS blk
 LEFT JOIN pg_catalog.pg_appendonly AS seg
     ON seg.segrelid = t.relid AND t.relkind = 'o';
 
+GRANT SELECT ON arenadata_toolkit.tables_track TO public;
+
 CREATE VIEW arenadata_toolkit.is_initial_snapshot_triggered AS
-SELECT CASE 
-	WHEN TRUE = ALL(select arenadata_toolkit.tracking_is_initial_snapshot_triggered_segments()) 
-	AND
-	arenadata_toolkit.tracking_is_initial_snapshot_triggered_master() 
-	THEN 1 ELSE NULL END AS is_triggered;
+SELECT CASE
+WHEN TRUE = ALL(select arenadata_toolkit.tracking_is_initial_snapshot_triggered_segments())
+AND arenadata_toolkit.tracking_is_initial_snapshot_triggered_master() 
+THEN 1 ELSE NULL END AS is_triggered;
+
+GRANT SELECT ON arenadata_toolkit.is_initial_snapshot_triggered TO public;
