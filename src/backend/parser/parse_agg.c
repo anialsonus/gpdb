@@ -46,6 +46,7 @@ typedef struct
 	ParseState *pstate;
 	Query	   *qry;
 	List	   *groupClauses;
+	List	   *groupClauseCommonVars;	
 	bool		have_non_var_grouping;
 	List	  **func_grouped_rels;
 	int			sublevels_up;
@@ -64,11 +65,14 @@ static int check_agg_arguments(ParseState *pstate,
 static bool check_agg_arguments_walker(Node *node,
 						   check_agg_arguments_context *context);
 static void check_ungrouped_columns(Node *node, ParseState *pstate, Query *qry,
-						List *groupClauses, bool have_non_var_grouping,
+						List *groupClauses, List *groupClauseCommonVars,
+						bool have_non_var_grouping,
 						List **func_grouped_rels);
 static bool check_ungrouped_columns_walker(Node *node,
 							   check_ungrouped_columns_context *context);
-static List* get_groupclause_exprs(Node *grpcl, List *targetList);
+static List* get_groupclause_tles(Node *grpcl, List *targetList);
+static List* get_com_grouping_ressortgroupref(Query *qry, bool *hasGrouping,
+						List *grp_tles);
 static Node *make_agg_arg(Oid argtype, Oid argcollation);
 
 
@@ -814,12 +818,15 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 {
 	List	   *groupClauses = NIL;
 	bool		have_non_var_grouping;
+	List	   *groupClauseCommonVars = NIL;
+	List 	   *com_grouping_ressortgroupref = NIL;
 	List	   *func_grouped_rels = NIL;
 	ListCell   *l;
 	bool		hasJoinRTEs;
 	bool		hasSelfRefRTEs;
 	PlannerInfo *root;
 	Node	   *clause;
+	bool		hasGrouping = false;
 
 	/* This should only be called if we found aggregates or grouping */
 	Assert(pstate->p_hasAggs || qry->groupClause || qry->havingQual);
@@ -840,13 +847,16 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 	}
 
 	/*
-	 * Build a list of the acceptable GROUP BY expressions for use by
+	 * Build a list of the acceptable unique GROUP BY expressions for use by
 	 * check_ungrouped_columns().
+	 *
+	 * We get the TLE, not just the expr, because GROUPING wants to know the
+	 * sortgroupref.
 	 */
 	foreach(l, qry->groupClause)
 	{
 		Node	   *grpcl = lfirst(l);
-		List	   *exprs;
+		List	   *tles;
 		ListCell   *l2;
 
 		if (grpcl == NULL)
@@ -854,20 +864,29 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 
 		Assert(IsA(grpcl, SortGroupClause) || IsA(grpcl, GroupingClause));
 
-		exprs = get_groupclause_exprs(grpcl, qry->targetList);
+		tles = get_groupclause_tles(grpcl, qry->targetList);
 
-		foreach(l2, exprs)
+		foreach(l2, tles)
 		{
-			Node	   *expr = (Node *) lfirst(l2);
+			TargetEntry *tl = (TargetEntry*) lfirst(l2);
 
 			// FIXME: Should this go into check_agg_arguments now?
-			if (checkExprHasGroupExtFuncs(expr))
+			if (checkExprHasGroupExtFuncs((Node*)tl->expr))
 				ereport(ERROR,
 						(errcode(ERRCODE_GROUPING_ERROR),
 						 errmsg("grouping() or group_id() not allowed in GROUP BY clause")));
-			groupClauses = lcons(expr, groupClauses);
+			groupClauses = lcons(tl, groupClauses);
 		}
 	}
+
+	/*
+	 * Getting adjacent TargetEntrys in groupings. Common tle will be needed
+	 * in case of ungrouped attributes in target list. In fact we get a list
+	 * of tle->ressortgroupref because we need to check for matching expressions
+	 * after flatten_joinalias_vars. We also find out if there are grouping
+	 * extensions.
+	 */
+	com_grouping_ressortgroupref = get_com_grouping_ressortgroupref(qry, &hasGrouping, groupClauses);
 
 	/*
 	 * If there are join alias vars involved, we have to flatten them to the
@@ -894,14 +913,24 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 	 * Detect whether any of the grouping expressions aren't simple Vars; if
 	 * they're all Vars then we don't have to work so hard in the recursive
 	 * scans.  (Note we have to flatten aliases before this.)
+	 *
+	 * Separately save Vars that are common to several groupings or in
+	 * the case of a simple group by.
 	 */
 	have_non_var_grouping = false;
 	foreach(l, groupClauses)
 	{
-		if (!IsA((Node *) lfirst(l), Var))
+
+		TargetEntry *tle = lfirst(l);
+
+		if (!IsA(tle->expr, Var))
 		{
 			have_non_var_grouping = true;
-			break;
+		}
+			else if (!hasGrouping ||
+				 list_member_int(com_grouping_ressortgroupref, tle->ressortgroupref))
+		{
+			groupClauseCommonVars = lappend(groupClauseCommonVars, tle->expr);
 		}
 	}
 
@@ -917,14 +946,16 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 	if (hasJoinRTEs)
 		clause = flatten_join_alias_vars(root, clause);
 	check_ungrouped_columns(clause, pstate, qry,
-							groupClauses, have_non_var_grouping,
+							groupClauses, groupClauseCommonVars,
+							have_non_var_grouping,
 							&func_grouped_rels);
 
 	clause = (Node *) qry->havingQual;
 	if (hasJoinRTEs)
 		clause = flatten_join_alias_vars(root, clause);
 	check_ungrouped_columns(clause, pstate, qry,
-							groupClauses, have_non_var_grouping,
+							groupClauses, groupClauseCommonVars,
+							have_non_var_grouping,
 							&func_grouped_rels);
 
 	/*
@@ -961,7 +992,8 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
  */
 static void
 check_ungrouped_columns(Node *node, ParseState *pstate, Query *qry,
-						List *groupClauses, bool have_non_var_grouping,
+						List *groupClauses, List *groupClauseCommonVars,
+						bool have_non_var_grouping,
 						List **func_grouped_rels)
 {
 	check_ungrouped_columns_context context;
@@ -969,6 +1001,7 @@ check_ungrouped_columns(Node *node, ParseState *pstate, Query *qry,
 	context.pstate = pstate;
 	context.qry = qry;
 	context.groupClauses = groupClauses;
+	context.groupClauseCommonVars = groupClauseCommonVars;
 	context.have_non_var_grouping = have_non_var_grouping;
 	context.func_grouped_rels = func_grouped_rels;
 	context.sublevels_up = 0;
@@ -1031,9 +1064,12 @@ check_ungrouped_columns_walker(Node *node,
 	 */
 	if (context->have_non_var_grouping && context->sublevels_up == 0)
 	{
+
 		foreach(gl, context->groupClauses)
 		{
-			if (equal(node, lfirst(gl)))
+			TargetEntry *tle = lfirst(gl);
+
+			  if (equal(node, tle->expr))
 				return false;	/* acceptable, do not descend more */
 		}
 	}
@@ -1060,7 +1096,7 @@ check_ungrouped_columns_walker(Node *node,
 		{
 			foreach(gl, context->groupClauses)
 			{
-				Var		   *gvar = (Var *) lfirst(gl);
+				Var		   *gvar = (Var *) ((TargetEntry *) lfirst(gl))->expr;
 
 				if (IsA(gvar, Var) &&
 					gvar->varno == var->varno &&
@@ -1097,7 +1133,7 @@ check_ungrouped_columns_walker(Node *node,
 			if (check_functional_grouping(rte->relid,
 										  var->varno,
 										  0,
-										  context->groupClauses,
+										  context->groupClauseCommonVars,
 										  &context->qry->constraintDeps))
 			{
 				*context->func_grouped_rels =
@@ -1466,12 +1502,12 @@ make_agg_arg(Oid argtype, Oid argcollation)
 }
 
 /*
- * get_groupclause_exprs -
- *     Return a list of expressions appeared in a given GroupClause or
+ * get_groupclause_tles -
+ *     Return a list of TargetEntrys appeared in a given GroupClause or
  *     GroupingClause.
  */
 List*
-get_groupclause_exprs(Node *grpcl, List *targetList)
+get_groupclause_tles(Node *grpcl, List *targetList)
 {
 	List *result = NIL;
 
@@ -1484,8 +1520,8 @@ get_groupclause_exprs(Node *grpcl, List *targetList)
 
 	if (IsA(grpcl, SortGroupClause))
 	{
-		Node *node = get_sortgroupclause_expr((SortGroupClause *) grpcl, targetList);
-		result = lappend(result, node);
+		TargetEntry *te = get_sortgroupclause_tle((SortGroupClause *) grpcl, targetList);
+		result = lappend(result, te);
 	}
 
 	else if (IsA(grpcl, GroupingClause))
@@ -1495,8 +1531,9 @@ get_groupclause_exprs(Node *grpcl, List *targetList)
 
 		foreach(l, gc->groupsets)
 		{
-			result = list_concat(result,
-								 get_groupclause_exprs((Node*)lfirst(l), targetList));
+			/* Collect only unique TargetEntrys */
+			result = list_concat_unique(result,
+								 get_groupclause_tles((Node*)lfirst(l), targetList));
 		}
 	}
 
@@ -1507,12 +1544,143 @@ get_groupclause_exprs(Node *grpcl, List *targetList)
 
 		foreach (lc, exprs)
 		{
-			result = list_concat(result, get_groupclause_exprs((Node *)lfirst(lc),
+			result = list_concat(result, get_groupclause_tles((Node *)lfirst(lc),
 															   targetList));
 		}
 	}
 
 	return result;
+}
+
+static List*
+get_com_grouping_ressortgroupref_routine(Node *grpcl, List *targetList, List *com_refs)
+{
+
+	List *result = NIL;
+
+	if ( !grpcl)
+		return result;
+
+	Assert(IsA(grpcl, SortGroupClause) ||
+		   IsA(grpcl, GroupingClause) ||
+		   IsA(grpcl, List));
+
+	if (IsA(grpcl, SortGroupClause))
+	{
+		TargetEntry *tle = get_sortgroupclause_tle((SortGroupClause *) grpcl, targetList);
+		result = lappend_int(result, tle->ressortgroupref);
+	}
+
+	else if (IsA(grpcl, GroupingClause))
+	{
+		ListCell *l;
+		GroupingClause *gc = (GroupingClause*)grpcl;
+
+		/* Cube and Rollup do not contain common attributes */
+		if(gc->groupType == GROUPINGTYPE_CUBE || gc->groupType == GROUPINGTYPE_ROLLUP){
+			list_free(com_refs);
+			return NIL;
+		}
+
+		foreach(l, gc->groupsets)
+		{
+			List *grouping_refs = get_com_grouping_ressortgroupref_routine((Node*)lfirst(l), targetList, com_refs);
+			
+			/* An empty grouping has no common attributes */
+			if(!grouping_refs)
+				return NIL;
+
+			/*Exclude tle that did not appear in this group*/
+			ListCell *lc;
+			lc = list_head(com_refs);
+			while(lc){
+				if(!list_member_int(grouping_refs, lfirst_int(lc))){
+					ListCell *lc_del = lc;
+					lc = lc->next;
+					com_refs = list_delete_int(com_refs, lfirst_int(lc_del));
+				}
+				else
+					lc = lc->next;
+			}
+		}
+
+		return com_refs;
+	}
+	else
+	{
+		List *tles = (List *)grpcl;
+		ListCell *lc;
+
+		foreach (lc, tles)
+		{
+			List *chunk = get_com_grouping_ressortgroupref_routine((Node *)lfirst(lc), targetList, com_refs);
+			if(!chunk)
+				return NIL;
+
+			result = list_concat(result, chunk);
+		}
+	}
+
+	return result;
+}
+
+/*
+ * get_com_grouping_tles -
+ *     Return a list of common ressortgroupref expressions appeared in group
+ * 	   clauses.
+ * 	   Also check for a group extensions.
+ */
+List*
+get_com_grouping_ressortgroupref(Query *qry, bool *hasGrouping, List *grp_tles){
+
+	if(!qry || !hasGrouping || !grp_tles)
+		return NIL;
+
+	/*
+	 *The first list is for common attributes in group extensions.
+	 *We assume that attributes are present in all grouping extensions.
+     *The second is for attributes in group by.
+	*/
+	List *com_grouping_expr_ressortgroupref = NIL;
+	List *group_expr_ressortgroupref = NIL;
+	ListCell *l;
+
+	foreach(l, grp_tles){
+		TargetEntry* te = (TargetEntry*) lfirst(l);
+		com_grouping_expr_ressortgroupref = list_append_unique_int(com_grouping_expr_ressortgroupref, te->ressortgroupref);
+	}
+
+	foreach(l, qry->groupClause)
+	{
+
+		/*
+		 * If there are no common attributes, there is no need to scan the
+		 * groupings. The attributes from group by are scanned first.
+		 */
+		if(!com_grouping_expr_ressortgroupref)
+			break;
+
+		Node *grp = lfirst(l);
+
+		if (grp == NULL)
+			continue;
+
+		/* Scan in grouping extensions*/
+		if(IsA(grp, GroupingClause)){
+			*hasGrouping = true;
+			com_grouping_expr_ressortgroupref =
+				get_com_grouping_ressortgroupref_routine(grp, qry->targetList,com_grouping_expr_ressortgroupref);
+		}
+		/* Scan in group by*/
+		if (IsA(grp, SortGroupClause)){
+			TargetEntry *tle = get_sortgroupclause_tle((SortGroupClause *) grp, qry->targetList);
+			group_expr_ressortgroupref = lappend_int(group_expr_ressortgroupref, tle->ressortgroupref);
+		}
+	}
+	/* Form a list of common ressortgroupref for all clauses */
+	com_grouping_expr_ressortgroupref = list_concat_unique_int(com_grouping_expr_ressortgroupref, group_expr_ressortgroupref);
+
+	return com_grouping_expr_ressortgroupref;
 }
 
 static bool
