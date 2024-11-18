@@ -27,13 +27,29 @@ extern void compute_jit_flags(PlannedStmt *pstmt, double above_cost,
 
 extern char *SerializeDXLPlan(Query *parse);
 
-static void gp_orca_compute_jit_flags(PlannedStmt *pstmt);
-
 void _PG_init(void);
 void _PG_fini(void);
 
 static planner_hook_type prev_planner = NULL;
 static ExplainOneQuery_hook_type prev_explain = NULL;
+
+/*
+ * Decide JIT settings for the given plan and record them in PlannedStmt.jitFlags.
+ *
+ * Since the costing model of ORCA and Postgres planner are different
+ * (Postgres planner cost usually higher), setting the JIT flags based on the
+ * common JIT costing GUCs could lead to false triggering of JIT.
+ *
+ * To prevent this situation, separate costing GUCs are created
+ * for Orca and used here for setting the JIT flags.
+ */
+static void
+gp_orca_compute_jit_flags(PlannedStmt *pstmt)
+{
+	compute_jit_flags(pstmt, optimizer_jit_above_cost,
+					  optimizer_jit_inline_above_cost,
+					  optimizer_jit_optimize_above_cost);
+}
 
 static void
 gp_orca_shutdown(int code, Datum arg)
@@ -231,23 +247,6 @@ gp_orca_explain(Query *query, int cursorOptions, IntoClause *into,
 								 params, queryEnv);
 }
 
-/*
- * Decide JIT settings for the given plan and record them in PlannedStmt.jitFlags.
- *
- * Since the costing model of ORCA and Postgres planner are different
- * (Postgres planner cost usually higher), setting the JIT flags based on the
- * common JIT costing GUCs could lead to false triggering of JIT.
- *
- * To prevent this situation, separate costing GUCs are created
- * for Orca and used here for setting the JIT flags.
- */
-static void
-gp_orca_compute_jit_flags(PlannedStmt *pstmt)
-{
-	compute_jit_flags(pstmt, optimizer_jit_above_cost,
-					  optimizer_jit_inline_above_cost,
-					  optimizer_jit_optimize_above_cost);
-}
 
 void
 _PG_init(void)
