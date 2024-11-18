@@ -244,7 +244,6 @@ gp_orca_explain(Query *query, int cursorOptions, IntoClause *into,
 								 params, queryEnv);
 }
 
-
 void
 _PG_init(void)
 {
