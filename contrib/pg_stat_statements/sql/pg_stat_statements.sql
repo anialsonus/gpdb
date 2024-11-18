@@ -1,5 +1,9 @@
 CREATE EXTENSION pg_stat_statements;
 
+-- Known issue: query is not added to pg_stat_statements statistics in
+-- case it is planned by GPORCA. So disable GPORCA during tests.
+SET optimizer=off;
+
 --
 -- simple and compound statements
 --
