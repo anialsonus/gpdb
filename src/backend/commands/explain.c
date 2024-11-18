@@ -889,12 +889,10 @@ ExplainPrintPlan(ExplainState *es, QueryDesc *queryDesc)
 	 * If requested, include information about GUC parameters with values that
 	 * don't match the built-in defaults.
 	 */
-	if (queryDesc->plannedstmt->planGen == PLANGEN_PLANNER)
+	if (queryDesc->plannedstmt->plannerName == NULL)
 		ExplainPropertyStringInfo("Optimizer", es, "Postgres-based planner");
-#ifdef USE_ORCA
 	else
-		ExplainPropertyStringInfo("Optimizer", es, "GPORCA");
-#endif
+		ExplainPropertyStringInfo("Optimizer", es, "%s", queryDesc->plannedstmt->plannerName);
 
 	ExplainPrintSettings(es);
 }

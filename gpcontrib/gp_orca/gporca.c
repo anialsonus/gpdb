@@ -1,9 +1,13 @@
 #include "postgres.h"
 
 #include "cdb/cdbvars.h"
-#include "executor/executor.h"
 #include "commands/explain.h"
+#include "executor/executor.h"
 #include "miscadmin.h"
+#include "nodes/extensible.h"
+#include "nodes/makefuncs.h"
+#include "nodes/nodeFuncs.h"
+#include "optimizer/clauses.h"
 #include "optimizer/orca.h"
 #include "optimizer/planner.h"
 #include "storage/ipc.h"
@@ -11,13 +15,6 @@
 #include "utils/guc.h"
 #include "utils/memutils.h"
 #include "utils/vmem_tracker.h"
-
-#include "nodes/extensible.h"
-#include "nodes/makefuncs.h"
-#include "nodes/nodeFuncs.h"
-
-#include "optimizer/clauses.h"
-#include "optimizer/orca.h"
 
 static ExplainOneQuery_hook_type prev_explain = NULL;
 
@@ -28,7 +25,11 @@ PG_MODULE_MAGIC;
 extern void InitGPOPT();
 extern void TerminateGPOPT();
 
-extern void compute_jit_flags(PlannedStmt *pstmt);
+extern void compute_jit_flags(PlannedStmt *pstmt, double above_cost,
+							  double inline_above_cost,
+							  double optimize_above_cost);
+
+static void gp_orca_compute_jit_flags(PlannedStmt *pstmt);
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -101,7 +102,7 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 			/*
 			 * Setting Jit flags for Optimizer
 			 */
-			compute_jit_flags(result);
+			gp_orca_compute_jit_flags(result);
 		}
 
 		if (gp_log_optimization_time)
@@ -125,20 +126,20 @@ gp_orca_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 }
 
 /*
- * ExplainDXL -
+ * gp_orca_explain_dxl -
  *	  print out the execution plan for one Query in DXL format
  *	  this function implicitly uses optimizer
  */
 static void
-ExplainDXL(Query *query, ExplainState *es, const char *queryString,
-				ParamListInfo params)
+gp_orca_explain_dxl(Query *query, ExplainState *es, const char *queryString,
+					ParamListInfo params)
 {
 	MemoryContext oldcxt = CurrentMemoryContext;
-	bool		save_enumerate;
-	char	   *dxl = NULL;
-	PlannerInfo		*root;
-	PlannerGlobal	*glob;
-	Query			*pqueryCopy;
+	bool save_enumerate;
+	char *dxl = NULL;
+	PlannerInfo *root;
+	PlannerGlobal *glob;
+	Query *pqueryCopy;
 
 	save_enumerate = optimizer_enumerate_plans;
 
@@ -183,7 +184,8 @@ ExplainDXL(Query *query, ExplainState *es, const char *queryString,
 	 * glob->invalItems, for any functions that are inlined or eliminated
 	 * away. (We will find dependencies to other objects later, after planning).
 	 */
-	pqueryCopy = fold_constants(root, pqueryCopy, params, GPOPT_MAX_FOLDED_CONSTANT_SIZE);
+	pqueryCopy = fold_constants(root, pqueryCopy, params,
+								GPOPT_MAX_FOLDED_CONSTANT_SIZE);
 
 	/*
 	 * If any Query in the tree mixes window functions and aggregates, we need to
@@ -211,27 +213,41 @@ ExplainDXL(Query *query, ExplainState *es, const char *queryString,
 	MemoryContextSwitchTo(oldcxt);
 }
 
-static void gp_orca_explain (Query *query,
-					int cursorOptions,
-					IntoClause *into,
-					ExplainState *es,
-					const char *queryString,
-					ParamListInfo params,
-					QueryEnvironment *queryEnv)
+static void
+gp_orca_explain(Query *query, int cursorOptions, IntoClause *into,
+				ExplainState *es, const char *queryString, ParamListInfo params,
+				QueryEnvironment *queryEnv)
 {
 	if (es->dxl)
 	{
-		ExplainDXL(query, es, queryString, params);
+		gp_orca_explain_dxl(query, es, queryString, params);
 		return;
 	}
 
 	if (prev_explain)
-		(*prev_explain)(query, cursorOptions, into, es,
-							 queryString, params, queryEnv);
+		(*prev_explain)(query, cursorOptions, into, es, queryString, params,
+						queryEnv);
 	else
-		standard_ExplainOneQuery(query, cursorOptions, into, es,
-							 queryString, params, queryEnv);
+		standard_ExplainOneQuery(query, cursorOptions, into, es, queryString,
+								 params, queryEnv);
+}
 
+/*
+ * Decide JIT settings for the given plan and record them in PlannedStmt.jitFlags.
+ *
+ * Since the costing model of ORCA and Postgres planner are different
+ * (Postgres planner cost usually higher), setting the JIT flags based on the
+ * common JIT costing GUCs could lead to false triggering of JIT.
+ *
+ * To prevent this situation, separate costing GUCs are created
+ * for Orca and used here for setting the JIT flags.
+ */
+static void
+gp_orca_compute_jit_flags(PlannedStmt *pstmt)
+{
+	compute_jit_flags(pstmt, optimizer_jit_above_cost,
+					  optimizer_jit_inline_above_cost,
+					  optimizer_jit_optimize_above_cost);
 }
 
 void
