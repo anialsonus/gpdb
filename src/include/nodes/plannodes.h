@@ -71,9 +71,9 @@ typedef struct PlannedStmt
 	CmdType		commandType;	/* select|insert|update|delete|utility */
 
 	/*
-	 * If the plan is done by an extension, should contain the name of the
-	 * extension planner. Should be NULL if planning is done by Postgres
-	 * planner.
+	 * If the plan is done by an extension, the field below should contain
+	 * the name of the extension planner. Should be NULL if planning is done
+	 * by Postgres planner.
 	 */
 	char		*plannerName;
 
