@@ -82,7 +82,6 @@
 #include "cdb/cdbtargeteddispatch.h"
 #include "cdb/cdbutil.h"
 #include "cdb/cdbvars.h"
-#include "optimizer/orca.h"
 #include "storage/lmgr.h"
 #include "utils/guc.h"
 
