@@ -40,12 +40,6 @@ typedef struct DirectDispatchInfo
 	bool		haveProcessedAnyCalculations;
 } DirectDispatchInfo;
 
-typedef enum PlanGenerator
-{
-	PLANGEN_PLANNER,			/* plan produced by the planner*/
-	PLANGEN_OPTIMIZER,			/* plan produced by the optimizer*/
-} PlanGenerator;
-
 /* DML Actions */
 typedef enum DMLAction
 {
@@ -76,7 +70,12 @@ typedef struct PlannedStmt
 
 	CmdType		commandType;	/* select|insert|update|delete|utility */
 
-	PlanGenerator	planGen;		/* optimizer generation */
+	/*
+	 * If the plan is done by an extension, the field below should contain
+	 * the name of the extension planner. Should be NULL if planning is done
+	 * by Postgres planner.
+	 */
+	char		*plannerName;
 
 	uint64		queryId;		/* query identifier (copied from Query) */
 

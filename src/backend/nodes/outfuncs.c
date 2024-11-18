@@ -338,7 +338,7 @@ _outPlannedStmt(StringInfo str, const PlannedStmt *node)
 	WRITE_NODE_TYPE("PLANNEDSTMT");
 
 	WRITE_ENUM_FIELD(commandType, CmdType);
-	WRITE_ENUM_FIELD(planGen, PlanGenerator);
+	WRITE_STRING_FIELD(plannerName);
 	WRITE_UINT64_FIELD(queryId);
 	WRITE_BOOL_FIELD(hasReturning);
 	WRITE_BOOL_FIELD(hasModifyingCTE);
