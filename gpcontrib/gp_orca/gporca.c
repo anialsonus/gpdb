@@ -16,10 +16,6 @@
 #include "utils/memutils.h"
 #include "utils/vmem_tracker.h"
 
-static ExplainOneQuery_hook_type prev_explain = NULL;
-
-extern char *SerializeDXLPlan(Query *parse);
-
 PG_MODULE_MAGIC;
 
 extern void InitGPOPT();
@@ -29,12 +25,15 @@ extern void compute_jit_flags(PlannedStmt *pstmt, double above_cost,
 							  double inline_above_cost,
 							  double optimize_above_cost);
 
+extern char *SerializeDXLPlan(Query *parse);
+
 static void gp_orca_compute_jit_flags(PlannedStmt *pstmt);
 
 void _PG_init(void);
 void _PG_fini(void);
 
 static planner_hook_type prev_planner = NULL;
+static ExplainOneQuery_hook_type prev_explain = NULL;
 
 static void
 gp_orca_shutdown(int code, Datum arg)
